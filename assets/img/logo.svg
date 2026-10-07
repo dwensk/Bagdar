@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100">
+  <!-- Bagdar: компас — синий круг, оранжевая стрелка вверх-вправо -->
+  <circle r="36" fill="none" stroke="#2563EB" stroke-width="12"/>
+  <polygon points="25,-25 6,6 -6,-6" fill="#EA580C"/>
+  <polygon points="-25,25 6,6 -6,-6" fill="#1E3A8A"/>
+  <circle r="4" fill="#FFFFFF"/>
+</svg>
