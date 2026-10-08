@@ -8,5 +8,5 @@ window.BAGDAR_CONFIG = {
   // Код, без которого нельзя зарегистрироваться администратором. ОБЯЗАТЕЛЬНО поменяйте.
   // В демо-режиме он виден в исходниках на GitHub — это ограничение статического хостинга.
   ADMIN_INVITE_CODE: 'CHANGE-ME-2026',
-  SUPPORT: '[Telegram или e-mail поддержки]'
+  SUPPORT: 'Telegram:@dimashqwk'
 };
