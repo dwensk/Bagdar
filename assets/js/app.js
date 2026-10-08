@@ -15,6 +15,7 @@ const g = (o) => typeof o === 'object' && o ? (o[lang] || o.ru) : o;
 // ── icons (Lucide-style outline) ──
 const P = {
   transfer: '<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
+  compare: '<path d="M3 3v18h18"/><path d="M8 17V9"/><path d="M13 17V5"/><path d="M18 17v-4"/>',
   catalog: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   finder: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
   docs: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="m9 15 2 2 4-4"/>',
@@ -250,7 +251,7 @@ function bindPay() {
 }
 
 // ════════ APP SHELL ════════
-const NAV = [['transfer', 'n_transfer'], ['catalog', 'n_catalog'], ['finder', 'n_finder'], ['docs', 'n_docs'], ['rules', 'n_rules']];
+const NAV = [['transfer', 'n_transfer'], ['compare', 'n_compare'], ['catalog', 'n_catalog'], ['finder', 'n_finder'], ['docs', 'n_docs'], ['rules', 'n_rules']];
 function shell(u, cur, title, body) {
   const adm = u.role === 'admin';
   const link = (href, icon, label, on) => `<a class="nav-a${on ? ' on' : ''}" href="${href}"${on ? ' aria-current="page"' : ''}>${ic(icon)}${label}</a>`;
@@ -272,6 +273,8 @@ function shell(u, cur, title, body) {
 const uniLabel = u => g(u.name) + ' (' + u.city + ')';
 const findUni = v => U.find(u => uniLabel(u) === v || u.name.ru + ' (' + u.city + ')' === v || u.name.kz + ' (' + u.city + ')' === v);
 function tuition(u) { if (u && u.price) return u.price.min; if (!u || typeof u.tuition !== 'string') return null; const n = u.tuition.replace(/\s/g, '').match(/\d+/g); if (!n) return null; const a = +n[0], b = +(n[1] || n[0]); return Math.round((a + b) / 2 / 10000) * 10000; }
+// общие функции для assets/js/compare.js
+window.Bagdar = { U, esc, money, uniLabel, findUni, tuition };
 function vTransfer() {
   const opts = [...U].sort((a, b) => g(a.name).localeCompare(g(b.name), 'ru')).map(u => `<option value="${esc(uniLabel(u))}">${esc((u.abbr || []).slice(0, 3).join(', '))}</option>`).join('');
   const side = (n, cls, lbl) => `<div class="side-box ${cls}"><label for="u${n}">${t(lbl)}</label><input class="input" id="u${n}" list="uni-list" autocomplete="off" placeholder="${t('tr_pick')}" aria-describedby="u${n}-e"><p class="err" id="u${n}-e"></p>
@@ -517,6 +520,7 @@ function route() {
     const v = path.slice(5);
     const map = {
       transfer: [t('tr_title'), vTransfer, () => { bindTransfer(pending); pending = null; }],
+      compare: [Compare.t('title'), () => Compare.view(window.Bagdar), () => Compare.bind(window.Bagdar)],
       catalog: [t('cat_title'), vCatalog, bindCatalog], finder: [t('fd_title'), vFinder, bindFinder],
       docs: [t('doc_title'), () => vDocs(params.get('tab')), () => bindDocs(params.get('tab'))],
       rules: [t('ru_title'), vRules, bindRules], account: [t('acc_title'), () => vAccount(u), null]
