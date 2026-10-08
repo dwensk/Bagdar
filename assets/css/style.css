@@ -81,7 +81,7 @@ button,select{cursor:pointer}
 .topnav{position:sticky;top:0;z-index:50;padding:12px 20px}
 .topnav-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:8px 8px 8px 16px;border-radius:18px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.3rem;letter-spacing:-.03em;color:var(--fg);text-decoration:none;min-height:44px}
-.brand-mark{width:30px;height:30px;flex-shrink:0}
+.brand-mark{width:36px;height:36px;flex-shrink:0}
 .topnav .links{display:flex;gap:4px;margin-left:auto}
 .topnav .links a{padding:0 14px;border-radius:10px;color:var(--fg-2);text-decoration:none;font-weight:500;font-size:.94rem;min-height:44px;display:inline-flex;align-items:center}
 .topnav .links a:hover{background:var(--muted)}
