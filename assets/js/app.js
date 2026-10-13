@@ -17,6 +17,7 @@ const P = {
   transfer: '<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
   compare: '<path d="M3 3v18h18"/><path d="M8 17V9"/><path d="M13 17V5"/><path d="M18 17v-4"/>',
   catalog: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  programs: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
   finder: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
   docs: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="m9 15 2 2 4-4"/>',
   rules: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
@@ -252,7 +253,7 @@ function bindPay() {
 }
 
 // ════════ APP SHELL ════════
-const NAV = [['transfer', 'n_transfer'], ['compare', 'n_compare'], ['catalog', 'n_catalog'], ['finder', 'n_finder'], ['docs', 'n_docs'], ['rules', 'n_rules']];
+const NAV = [['transfer', 'n_transfer'], ['compare', 'n_compare'], ['catalog', 'n_catalog'], ['finder', 'n_finder'], ['programs', 'n_programs'], ['docs', 'n_docs'], ['rules', 'n_rules']];
 function shell(u, cur, title, body) {
   const adm = u.role === 'admin';
   const link = (href, icon, label, on) => `<a class="nav-a${on ? ' on' : ''}" href="${href}"${on ? ' aria-current="page"' : ''}>${ic(icon)}${label}</a>`;
@@ -527,6 +528,7 @@ function route() {
     const map = {
       transfer: [t('tr_title'), vTransfer, () => { bindTransfer(pending); pending = null; }],
       compare: [Compare.t('title'), () => Compare.view(window.Bagdar), () => Compare.bind(window.Bagdar)],
+      programs: [Programs.t('title'), () => Programs.view(), () => Programs.bind(window.Bagdar)],
       catalog: [t('cat_title'), vCatalog, bindCatalog], finder: [t('fd_title'), vFinder, bindFinder],
       docs: [t('doc_title'), () => vDocs(params.get('tab')), () => bindDocs(params.get('tab'))],
       rules: [t('ru_title'), vRules, bindRules], account: [t('acc_title'), () => vAccount(u), null]

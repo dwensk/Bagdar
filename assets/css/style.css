@@ -218,7 +218,7 @@ button,select{cursor:pointer}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* App shell */
-.shell{display:grid;grid-template-columns:260px 1fr;gap:20px;max-width:1320px;margin:0 auto;padding:16px 20px 60px;min-height:100vh}
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px;max-width:1320px;margin:0 auto;padding:16px 20px 60px;min-height:100vh}
 .side{position:sticky;top:16px;align-self:start;padding:18px;display:flex;flex-direction:column;gap:4px;min-height:calc(100vh - 32px)}
 .side .brand{padding:0 8px 12px}
 .nav-a{display:flex;align-items:center;gap:12px;min-height:46px;padding:0 14px;border-radius:12px;color:var(--fg-2);text-decoration:none;font-weight:500;transition:background-color var(--dur),color var(--dur)}
@@ -234,7 +234,7 @@ button,select{cursor:pointer}
 @keyframes viewin{from{opacity:0;transform:translateY(12px)}}
 .panel{padding:26px;margin-bottom:18px}
 .panel>h2{font-size:1.2rem;font-weight:700;margin-bottom:14px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .bottomnav{display:none}
 
 /* Calculator */
@@ -338,7 +338,7 @@ button,select{cursor:pointer}
   .features .feature,.features .feature.wide{grid-column:span 12}
   .stats,.kpis{grid-template-columns:1fr 1fr}
   .steps3{grid-template-columns:1fr}
-  .shell{grid-template-columns:1fr;padding-bottom:110px}
+  .shell{grid-template-columns:minmax(0,1fr);padding-bottom:110px}
   .side{display:none}
   .bottomnav{display:flex;position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:60;padding:6px;border-radius:20px;gap:2px}
   .bottomnav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border-radius:14px;font-size:.7rem;font-weight:600;color:var(--muted-fg);text-decoration:none}
@@ -347,7 +347,7 @@ button,select{cursor:pointer}
   .toasts{bottom:calc(90px + env(safe-area-inset-bottom,0px))}
 }
 @media (max-width:640px){
-  .grid2,.role,.modal-grid{grid-template-columns:1fr}
+  .grid2,.role,.modal-grid{grid-template-columns:minmax(0,1fr)}
   .q-row{flex-direction:column;align-items:flex-start}
   .bar{grid-template-columns:1fr auto}.bar .tr{grid-column:1/-1;order:3}
   .cgrid{gap:2px}

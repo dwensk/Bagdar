@@ -40,11 +40,17 @@
 | `POST /api/history`, `DELETE /api/history?id=` | Сохранить или удалить расчёт |
 | `POST /api/checks` | Отметить документ в чек-листе |
 | `GET /api/admin`, `POST /api/admin` | Админ: пользователи, оплаты, статистика; выдать или отозвать подписку, блок, удаление |
+| `GET /api/programs?pair=&score=&sort=&grant=1` | Специальности по паре предметов ЕНТ: фильтр по баллу и сортировка на сервере |
 | `GET /api/health` | Проверка, что сервер и база работают |
 
 ### Таблицы
 
-`users`, `sessions`, `payments`, `history`, `checks` (см. `lib/db.js`).
+`users`, `sessions`, `payments`, `history`, `checks`, `programs` (см. `lib/db.js`).
+
+### Источники данных
+
+- Специальности, пороги на грант, зарплаты и трудоустройство: [joo.kz](https://joo.kz/professions/), 105 специальностей по 12 парам предметов, собрано 13.10.2026 (`lib/programs.js`).
+- Цены вузов: BAQ.KZ, 11.08.2026 (`assets/js/data.js`).
 
 ### Безопасность
 
