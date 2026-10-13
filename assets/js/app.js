@@ -242,8 +242,9 @@ function bindPay() {
   $('#pay-btn').onclick = () => {
     const btn = $('#pay-btn'); btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> ${t('paying')}`;
     const m = $('input[name=pm]:checked').value;
-    setTimeout(() => {
-      S.pay(m); const u = S.me();
+    setTimeout(async () => {
+      try { await S.pay(m); } catch (err) { btn.disabled = false; btn.innerHTML = `${ic('lock')} ${t('pay_btn')} ${CFG.PRICE_KZT.toLocaleString('ru-RU')} ₸`; toast(t(typeof err === 'string' ? err : 'e_generic')); return; }
+      const u = S.me();
       $('#pay-box').innerHTML = `<div class="success"><svg viewBox="0 0 88 88" aria-hidden="true"><circle cx="44" cy="44" r="38"/><path d="M28 45l11 11 21-23"/></svg><h2>${t('paid_h')}</h2><p class="muted" style="margin:8px 0 20px">${t('paid_p')} ${date(u.paidUntil)}</p><a class="btn btn-accent" href="#/app/transfer">${t('go_app')} ${ic('arrow')}</a></div>`;
       toast(t('t_paid'));
     }, reduce ? 200 : 1400);
@@ -327,10 +328,10 @@ function bindTransfer(pref) {
       <div class="actions" style="margin-top:16px"><a class="btn btn-primary" href="#/app/docs?tab=transfer">${ic('docs')} ${t('to_docs')}</a><button class="btn btn-ghost" onclick="window.print()">${ic('download')} ${t('print')}</button><button class="btn btn-ghost" id="save-calc">${ic('check')} ${History.t('save')}</button></div>
       <p class="note">${t('tr_note')}</p>`;
     // сохранение расчёта в историю (assets/js/history.js)
-    $('#save-calc').onclick = e => {
-      History.save({ from: n1, to: n2, p1, p2, done, acc, stay, go: gov });
-      e.currentTarget.disabled = true; // чтобы не сохранить один расчёт дважды
-      toast(History.t('saved'));
+    $('#save-calc').onclick = async e => {
+      const b = e.currentTarget; b.disabled = true; // чтобы не сохранить один расчёт дважды
+      try { await History.save({ from: n1, to: n2, p1, p2, done, acc, stay, go: gov }); toast(History.t('saved')); }
+      catch (err) { b.disabled = false; toast(t(typeof err === 'string' ? err : 'e_generic')); }
     };
     requestAnimationFrame(() => requestAnimationFrame(() => $$('.fl[data-w]', box).forEach(f => f.style.width = Math.max(2, +f.dataset.w) + '%')));
     box.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
@@ -487,14 +488,19 @@ function bindAdmin(me) {
     const ps = S.payments();
     $('#adp').innerHTML = ps.length ? `<thead><tr><th>${t('c_date')}</th><th>${t('c_user')}</th><th>${t('c_method')}</th><th class="r">${t('c_amount')}</th></tr></thead><tbody>${ps.map(p => `<tr><td>${date(p.createdAt)}</td><td>${esc(p.email)}</td><td>${p.method === 'kaspi' ? 'Kaspi Pay' : t('m_card')} <span class="demo-badge">demo</span></td><td class="r">${money(p.amount)}</td></tr>`).join('')}</tbody>` : `<tbody><tr><td class="muted">${t('acc_empty')}</td></tr></tbody>`;
   };
+  // KPI-карточки сверху: обновить числа после ответа сервера
+  const kpis = () => { const st = S.stats(); $$('.kpi b span').forEach((el, i) => { const v = [st.users, st.active, st.revenue, st.admins][i]; el.dataset.count = v; el.textContent = v.toLocaleString('ru-RU'); }); };
+  S.loadAdmin().then(() => { if ($('#adt')) { draw(); kpis(); } }); // свежие данные с сервера
   $('#adq').oninput = e => { adQ = e.target.value; draw(); };
   $('#adt').onclick = async e => {
     const b = e.target.closest('[data-a]'); if (!b) return; const id = b.dataset.id;
-    if (b.dataset.a === 'grant') { S.grant(id, CFG.PERIOD_DAYS); toast(t('t_granted')); }
-    if (b.dataset.a === 'revoke') { S.revoke(id); toast(t('t_revoked')); }
-    if (b.dataset.a === 'block') { S.toggleBlock(id); toast(t('t_saved')); }
-    if (b.dataset.a === 'del') { if (!(await ask(t('confirm_del', { e: b.dataset.e }), t('a_del')))) return; S.remove(id); toast(t('t_deleted')); }
-    draw();
+    try {
+      if (b.dataset.a === 'grant') { await S.grant(id); toast(t('t_granted')); }
+      if (b.dataset.a === 'revoke') { await S.revoke(id); toast(t('t_revoked')); }
+      if (b.dataset.a === 'block') { await S.toggleBlock(id); toast(t('t_saved')); }
+      if (b.dataset.a === 'del') { if (!(await ask(t('confirm_del', { e: b.dataset.e }), t('a_del')))) return; await S.remove(id); toast(t('t_deleted')); }
+    } catch (err) { toast(t(typeof err === 'string' ? err : 'e_generic')); }
+    draw(); kpis();
   };
   $('#adexp').onclick = () => {
     const rows = [['name', 'email', 'role', 'paid_until', 'blocked', 'created']].concat(S.users().map(u => [u.name, u.email, u.role, u.paidUntil ? new Date(u.paidUntil).toISOString() : '', u.blocked, new Date(u.createdAt).toISOString()]));
@@ -543,5 +549,5 @@ function route() {
 // in-page anchors on landing (#features) shouldn't trigger router
 window.addEventListener('hashchange', () => { const h = location.hash; if (h && !h.startsWith('#/')) { const el = document.getElementById(h.slice(1)); if (el) { el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }); history.replaceState(null, '', '#/'); } return; } route(); });
 document.documentElement.lang = lang === 'kz' ? 'kk' : 'ru';
-route();
+S.init().then(route); // сначала узнаём у сервера, кто вошёл, потом рисуем страницу
 })();

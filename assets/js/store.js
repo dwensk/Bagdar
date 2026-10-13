@@ -1,98 +1,87 @@
-/* Bagdar — демо-бэкенд в браузере.
-   Пароли хранятся как PBKDF2-SHA256 (150 000 итераций) с солью, не в открытом виде.
-   Все данные — только в этом браузере. Для реального продукта замените этот модуль на сервер (README). */
+/* Bagdar — связь сайта с сервером (API на Vercel, база PostgreSQL).
+   Аккаунты, оплаты, история и чек-листы хранятся в базе на сервере.
+   В браузере лежит только токен входа (bagdar:token) и копия данных для быстрой отрисовки. */
 window.Store = (() => {
-  const KEY = 'bagdar:v1';
+  const TOKEN = 'bagdar:token';
   const DAY = 864e5;
-  const empty = () => ({ users: [], payments: [], session: null, checks: {} });
-  let db;
-  try { db = JSON.parse(localStorage.getItem(KEY)) || empty(); } catch (e) { db = empty(); }
-  for (const k of Object.keys(empty())) if (db[k] === undefined) db[k] = empty()[k];
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} };
-  const id = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
-  const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-  const salt = () => hex(crypto.getRandomValues(new Uint8Array(16)));
+  let token = null;
+  try { token = localStorage.getItem(TOKEN); } catch (e) {}
 
-  async function hashPw(pw, s) {
-    if (!(crypto && crypto.subtle)) throw 'e_crypto';
-    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
-    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(s), iterations: 150000, hash: 'SHA-256' }, key, 256);
-    return hex(bits);
-  }
-  const norm = e => String(e || '').trim().toLowerCase();
-  const pub = u => u && ({ id: u.id, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt, paidUntil: u.paidUntil || 0, blocked: !!u.blocked });
-  const byId = i => db.users.find(u => u.id === i);
+  // копия данных с сервера
+  let st = { user: null, payments: [], checks: {}, admin: { users: [], payments: [], stats: { users: 0, active: 0, revenue: 0, admins: 0 } } };
 
-  function me() {
-    const s = db.session;
-    if (!s || s.exp < Date.now()) return null;
-    const u = byId(s.userId);
-    if (!u || u.blocked) return null;
-    return pub(u);
+  // запрос к API; при ошибке бросает код ошибки (ключ из i18n)
+  async function api(path, opts = {}) {
+    let r;
+    try {
+      r = await fetch(path, {
+        method: opts.method || 'GET',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+    } catch (e) { throw 'e_generic'; } // нет интернета или сервер недоступен
+    const data = await r.json().catch(() => ({}));
+    if (r.status === 401) { setToken(null); st.user = null; }
+    if (!r.ok && !data.errs) throw data.error || 'e_generic';
+    return data;
   }
+  function setToken(t) { token = t; try { t ? localStorage.setItem(TOKEN, t) : localStorage.removeItem(TOKEN); } catch (e) {} }
+
+  // загрузить всё о пользователе (вызывается при открытии сайта и после входа)
+  async function init() {
+    if (!token) return;
+    try {
+      const d = await api('/api/me');
+      st.user = d.user; st.payments = d.payments; st.checks = d.checks;
+      window.History && History.setAll(d.history);
+      if (d.user.role === 'admin') await loadAdmin();
+    } catch (e) { if (!token) st.user = null; }
+  }
+  async function loadAdmin() { try { st.admin = await api('/api/admin'); } catch (e) {} }
+
+  const me = () => st.user;
   const isPaid = u => !!u && (u.role === 'admin' || (u.paidUntil || 0) > Date.now());
   const daysLeft = u => u && u.paidUntil > Date.now() ? Math.ceil((u.paidUntil - Date.now()) / DAY) : 0;
 
-  async function register({ name, email, password, role, code }) {
-    const errs = {};
-    email = norm(email); name = String(name || '').trim();
-    if (name.length < 2) errs.name = 'e_name';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) errs.email = 'e_email';
-    else if (db.users.some(u => u.email === email)) errs.email = 'e_taken';
-    if (String(password || '').length < 8) errs.password = 'e_pw';
-    if (role === 'admin' && code !== window.BAGDAR_CONFIG.ADMIN_INVITE_CODE) errs.code = 'e_code';
-    if (Object.keys(errs).length) return { errs };
-    const s = salt();
-    const u = { id: id(), name, email, role: role === 'admin' ? 'admin' : 'user', salt: s, hash: await hashPw(password, s), createdAt: Date.now(), paidUntil: 0, blocked: false };
-    db.users.push(u);
-    db.session = { userId: u.id, exp: Date.now() + 7 * DAY };
-    save();
-    return { user: pub(u) };
+  async function auth(action, data) {
+    const d = await api('/api/auth?action=' + action, { method: 'POST', body: data });
+    if (d.errs) return { errs: d.errs };
+    setToken(d.token);
+    await init();
+    return { user: d.user };
   }
-  async function login({ email, password }) {
-    const u = db.users.find(x => x.email === norm(email));
-    if (!u) return { errs: { form: 'e_login' } };
-    const h = await hashPw(String(password || ''), u.salt);
-    if (h !== u.hash) return { errs: { form: 'e_login' } };
-    if (u.blocked) return { errs: { form: 'e_blocked' } };
-    db.session = { userId: u.id, exp: Date.now() + 7 * DAY };
-    save();
-    return { user: pub(u) };
+  const register = data => auth('register', data);
+  const login = data => auth('login', data);
+  function logout() {
+    if (token) api('/api/auth?action=logout', { method: 'POST' }).catch(() => {});
+    setToken(null);
+    st.user = null; st.payments = []; st.checks = {};
+    window.History && History.setAll([]);
   }
-  function logout() { db.session = null; save(); }
 
-  function pay(method) {
-    const m = me(); if (!m) return null;
-    const u = byId(m.id);
-    const cfg = window.BAGDAR_CONFIG;
-    u.paidUntil = Math.max(Date.now(), u.paidUntil || 0) + cfg.PERIOD_DAYS * DAY;
-    const p = { id: id(), userId: u.id, email: u.email, amount: cfg.PRICE_KZT, method, status: 'demo', createdAt: Date.now() };
-    db.payments.unshift(p); save();
-    return p;
+  async function pay(method) {
+    const d = await api('/api/pay', { method: 'POST', body: { method } });
+    st.user = d.user; st.payments.unshift(d.payment);
+    return d.payment;
   }
-  const myPayments = () => { const m = me(); return m ? db.payments.filter(p => p.userId === m.id) : []; };
+  const myPayments = () => st.payments;
 
   // ── admin ──
-  const guard = () => { const m = me(); if (!m || m.role !== 'admin') throw 'e_forbidden'; return m; };
-  const users = () => { guard(); return db.users.map(pub); };
-  const payments = () => { guard(); return db.payments.slice(); };
-  function grant(uid, days) { guard(); const u = byId(uid); if (!u) return; u.paidUntil = Math.max(Date.now(), u.paidUntil || 0) + days * DAY; save(); }
-  function revoke(uid) { guard(); const u = byId(uid); if (!u) return; u.paidUntil = 0; save(); }
-  function toggleBlock(uid) { const m = guard(); const u = byId(uid); if (!u || u.id === m.id) return; u.blocked = !u.blocked; save(); }
-  function remove(uid) { const m = guard(); if (uid === m.id) return; db.users = db.users.filter(u => u.id !== uid); delete db.checks[uid]; save(); }
-  function stats() {
-    guard();
-    const now = Date.now(), monthAgo = now - 30 * DAY;
-    return {
-      users: db.users.filter(u => u.role === 'user').length,
-      active: db.users.filter(u => u.role === 'user' && u.paidUntil > now).length,
-      revenue: db.payments.filter(p => p.createdAt > monthAgo).reduce((s, p) => s + p.amount, 0),
-      admins: db.users.filter(u => u.role === 'admin').length
-    };
-  }
-  // ── per-user checklists ──
-  function getChecks(list) { const m = me(); return (m && db.checks[m.id] && db.checks[m.id][list]) || {}; }
-  function setCheck(list, key, val) { const m = me(); if (!m) return; db.checks[m.id] = db.checks[m.id] || {}; db.checks[m.id][list] = db.checks[m.id][list] || {}; db.checks[m.id][list][key] = !!val; save(); }
+  const users = () => st.admin.users;
+  const payments = () => st.admin.payments;
+  const stats = () => st.admin.stats;
+  async function adminAction(action, id) { st.admin = await api('/api/admin', { method: 'POST', body: { action, id } }); }
+  const grant = id => adminAction('grant', id);
+  const revoke = id => adminAction('revoke', id);
+  const toggleBlock = id => adminAction('block', id);
+  const remove = id => adminAction('delete', id);
 
-  return { me, isPaid, daysLeft, register, login, logout, pay, myPayments, users, payments, grant, revoke, toggleBlock, remove, stats, getChecks, setCheck };
+  // ── чек-листы документов ──
+  const getChecks = list => st.checks[list] || {};
+  function setCheck(list, key, val) {
+    (st.checks[list] = st.checks[list] || {})[key] = !!val; // сразу на экране
+    api('/api/checks', { method: 'POST', body: { list, key, val: !!val } }).catch(() => {}); // и на сервер
+  }
+
+  return { api, init, loadAdmin, me, isPaid, daysLeft, register, login, logout, pay, myPayments, users, payments, stats, grant, revoke, toggleBlock, remove, getChecks, setCheck };
 })();

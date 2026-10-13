@@ -1,0 +1,10 @@
+{
+  "name": "bagdar",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Bagdar — калькулятор перевода между вузами Казахстана. Фронт + API на Vercel, база PostgreSQL (Neon).",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "pg": "8.13.1"
+  }
+}
