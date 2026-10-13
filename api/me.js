@@ -2,7 +2,7 @@
 const { query } = require('../lib/db');
 const { send, requireUser, handler } = require('../lib/http');
 
-const payment = r => ({ id: r.id, userId: r.user_id, email: r.email, amount: r.amount, method: r.method, status: r.status, createdAt: Number(r.created_at) });
+const payment = r => ({ id: r.id, userId: r.user_id, email: r.email, amount: r.amount, method: r.method, status: r.status, note: r.note || '', createdAt: Number(r.created_at) });
 
 module.exports = handler(async (req, res) => {
   const u = await requireUser(req, res);

@@ -81,7 +81,7 @@ function effects() {
     const to = +el.dataset.count, run = () => {
       if (reduce) { el.textContent = to.toLocaleString('ru-RU'); return; }
       const t0 = performance.now(), d = 1200;
-      const step = n => { const p = Math.min(1, (n - t0) / d), e = 1 - Math.pow(1 - p, 3); el.textContent = Math.round(to * e).toLocaleString('ru-RU'); if (p < 1) requestAnimationFrame(step); };
+      const step = n => { if (+el.dataset.count !== to) return; /* число обновилось — старую анимацию прерываем */ const p = Math.min(1, (n - t0) / d), e = 1 - Math.pow(1 - p, 3); el.textContent = Math.round(to * e).toLocaleString('ru-RU'); if (p < 1) requestAnimationFrame(step); };
       requestAnimationFrame(step);
     };
     if ('IntersectionObserver' in window) { const io = new IntersectionObserver(es => { if (es[0].isIntersecting) { run(); io.disconnect(); } }); io.observe(el); } else run();
@@ -223,32 +223,57 @@ function bindAuth(mode) {
 }
 
 // ════════ PAYWALL ════════
+// Оплата переводом на Kaspi: пользователь переводит деньги и отправляет заявку,
+// админ сверяет перевод и подтверждает заявку в админ-панели — тогда включается подписка.
+const digits = v => String(v || '').replace(/\D/g, '');
+function contactBox() {
+  const ph = CFG.CONTACT_PHONE, tg = (String(CFG.SUPPORT || '').match(/@([\w\d_]+)/) || [])[1];
+  return `<p class="hint contact" style="margin-top:14px">${ic('phone')} <b>${t('kp_contact')}:</b> <a href="tel:+${digits(ph)}">${esc(ph)}</a> · <a href="https://wa.me/${digits(ph)}" target="_blank" rel="noopener">WhatsApp</a>${tg ? ` · <a href="https://t.me/${esc(tg)}" target="_blank" rel="noopener">Telegram</a>` : ''}</p>`;
+}
+const payStatus = p => p.status === 'pending' ? `<span class="badge b-no">${t('kp_pending')}</span>` : p.status === 'rejected' ? `<span class="badge b-bad">${t('kp_rejected')}</span>` : p.status === 'demo' ? `<span class="badge b-no">${t('kp_demo')}</span>` : `<span class="badge b-ok">${t('kp_paid')}</span>`;
+function payBox() {
+  const pend = S.pending(), last = S.myPayments()[0], sum = CFG.PRICE_KZT.toLocaleString('ru-RU') + ' ₸';
+  if (pend) return `<div class="success"><svg viewBox="0 0 88 88" aria-hidden="true"><circle cx="44" cy="44" r="38"/><path d="M28 45l11 11 21-23"/></svg>
+    <h2>${t('kp_wait_h')}</h2><p class="muted" style="margin:8px 0 6px">${t('kp_wait_p')}</p>
+    <p style="margin-bottom:18px">${payStatus(pend)} · ${sum} · ${esc(pend.note)}</p>
+    <button class="btn btn-ghost" id="pay-check">${t('kp_check')}</button>${contactBox()}</div>`;
+  return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span class="muted">${t('total')}</span><span class="amount" style="font-size:2.6rem">${sum} <small>${t('per_month')}</small></span></div>
+    ${last && last.status === 'rejected' ? `<p class="alert bad" style="margin-top:12px">${t('kp_rej_p')}</p>` : ''}
+    <h3 style="margin:18px 0 8px">${ic('phone')} ${t('kp_h')}</h3>
+    <p>1. ${t('kp_s1', { sum })}</p>
+    <div class="method" style="margin:10px 0;justify-content:space-between"><span><b style="font-size:1.25rem">${esc(CFG.KASPI_PHONE)}</b><small>${t('kp_to')}: ${esc(CFG.KASPI_NAME)}</small></span>
+      <button class="btn btn-ghost btn-sm" id="kp-copy">${t('kp_copy')}</button></div>
+    <p style="margin-top:14px">2. ${t('kp_s2')}</p>
+    <div class="field" style="margin-top:8px"><label for="kp-sender">${t('kp_sender')}</label><input class="input" id="kp-sender" autocomplete="name" maxlength="80" placeholder="Айгерім С." aria-describedby="kp-e"><p class="err" id="kp-e" role="alert"></p></div>
+    <button class="btn btn-accent btn-block" id="pay-btn" style="margin-top:6px">${ic('check')} ${t('kp_btn')}</button>
+    ${contactBox()}`;
+}
 function vPay(u) {
   return `<header class="topnav"><div class="topnav-in glass">${brand()}<div class="right">${langSeg()}${themeBtn()}<button class="icon-btn" data-logout aria-label="${t('logout')}">${ic('logout')}</button></div></div></header>
   <main id="main" tabindex="-1" class="paywall">
     <section class="rv"><span class="kicker">${ic('lock')} Bagdar Pro</span><h1 style="font-size:clamp(1.9rem,3.6vw,2.8rem);margin:8px 0 12px">${t('pay_h')}</h1><p class="muted" style="font-size:1.08rem;margin-bottom:20px">${t('pay_p')}</p>
       <ul class="checks">${['p1', 'p2', 'p3', 'p4'].map(k => `<li>${ic('check')}<span>${t(k)}</span></li>`).join('')}</ul></section>
-    <section class="pay-card glass spot rv" id="pay-box" aria-live="polite">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span class="muted">${t('total')}</span><span class="amount" style="font-size:2.6rem">${CFG.PRICE_KZT.toLocaleString('ru-RU')} ₸ <small>${t('per_month')}</small></span></div>
-      <fieldset class="methods"><legend style="font-weight:600;margin-bottom:6px">${t('pay_method')}</legend>
-        <label class="method"><input type="radio" name="pm" value="kaspi" checked>${ic('phone')}<span>${t('m_kaspi')}<small>${t('m_kaspi_s')}</small></span></label>
-        <label class="method"><input type="radio" name="pm" value="card">${ic('card')}<span>${t('m_card')}<small>${t('m_card_s')}</small></span></label>
-      </fieldset>
-      <button class="btn btn-accent btn-block" id="pay-btn">${ic('lock')} ${t('pay_btn')} ${CFG.PRICE_KZT.toLocaleString('ru-RU')} ₸</button>
-      ${CFG.MODE === 'demo' ? `<p class="hint" style="margin-top:12px"><span class="demo-badge">${t('demo_mode')}</span><br>${t('pay_secure')}</p>` : ''}
-    </section>
+    <section class="pay-card glass spot rv" id="pay-box" aria-live="polite">${payBox()}</section>
   </main>`;
 }
 function bindPay() {
-  $('#pay-btn').onclick = () => {
-    const btn = $('#pay-btn'); btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> ${t('paying')}`;
-    const m = $('input[name=pm]:checked').value;
-    setTimeout(async () => {
-      try { await S.pay(m); } catch (err) { btn.disabled = false; btn.innerHTML = `${ic('lock')} ${t('pay_btn')} ${CFG.PRICE_KZT.toLocaleString('ru-RU')} ₸`; toast(t(typeof err === 'string' ? err : 'e_generic')); return; }
-      const u = S.me();
-      $('#pay-box').innerHTML = `<div class="success"><svg viewBox="0 0 88 88" aria-hidden="true"><circle cx="44" cy="44" r="38"/><path d="M28 45l11 11 21-23"/></svg><h2>${t('paid_h')}</h2><p class="muted" style="margin:8px 0 20px">${t('paid_p')} ${date(u.paidUntil)}</p><a class="btn btn-accent" href="#/app/transfer">${t('go_app')} ${ic('arrow')}</a></div>`;
-      toast(t('t_paid'));
-    }, reduce ? 200 : 1400);
+  const box = $('#pay-box');
+  box.onclick = async e => {
+    if (e.target.closest('#kp-copy')) {
+      try { await navigator.clipboard.writeText(CFG.KASPI_PHONE.replace(/\s/g, '')); toast(t('kp_copied')); } catch (err) {}
+    }
+    if (e.target.closest('#pay-check')) { // админ мог уже подтвердить — спрашиваем сервер
+      await S.init();
+      if (S.isPaid(S.me())) { toast(t('t_paid')); return go('#/app/transfer'); }
+      box.innerHTML = payBox();
+    }
+    if (e.target.closest('#pay-btn')) {
+      const inp = $('#kp-sender'), v = inp.value.trim();
+      if (v.length < 2) { $('#kp-e').textContent = t('kp_e_sender'); inp.setAttribute('aria-invalid', 'true'); inp.focus(); return; }
+      const btn = $('#pay-btn'); btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> ${t('kp_sending')}`;
+      try { await S.pay(v); box.innerHTML = payBox(); }
+      catch (err) { btn.disabled = false; btn.innerHTML = `${ic('check')} ${t('kp_btn')}`; toast(t(typeof err === 'string' ? err : 'e_generic')); }
+    }
   };
 }
 
@@ -464,14 +489,14 @@ function vAccount(u) {
   return `<section class="panel glass rv"><div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><span class="avatar" style="width:56px;height:56px;font-size:1.3rem">${esc(u.name.slice(0, 1).toUpperCase())}</span><div><h2 style="margin:0">${esc(u.name)}</h2><p class="muted">${esc(u.email)} · <span class="badge ${adm ? 'b-adm' : 'b-no'}">${adm ? t('role_admin') : t('role_user')}</span></p></div></div></section>
   <section class="panel glass rv"><h2>${t('acc_plan')}</h2>${adm ? `<p>${t('sub_admin')}</p>` : `<p>${u.paidUntil > Date.now() ? `<span class="badge b-ok">${t('sub_active')}</span> ${t('acc_until')} ${date(u.paidUntil)}` : `<span class="badge b-no">${t('acc_none')}</span>`}</p><div class="actions" style="margin-top:14px"><a class="btn btn-accent" href="#/pay?extend=1">${t('acc_extend')}</a></div>`}</section>
   ${History.render(money, esc)}
-  ${adm ? '' : `<section class="panel glass rv"><h2>${t('acc_hist')}</h2>${pays.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${t('c_date')}</th><th>${t('c_method')}</th><th class="r">${t('c_amount')}</th></tr></thead><tbody>${pays.map(p => `<tr><td>${date(p.createdAt)}</td><td>${p.method === 'kaspi' ? 'Kaspi Pay' : t('m_card')}${p.status === 'demo' ? ' <span class="demo-badge">demo</span>' : ''}</td><td class="r">${money(p.amount)}</td></tr>`).join('')}</tbody></table></div>` : `<p class="muted">${t('acc_empty')}</p>`}</section>`}`;
+  ${adm ? '' : `<section class="panel glass rv"><h2>${t('acc_hist')}</h2>${pays.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${t('c_date')}</th><th>${t('c_method')}</th><th class="r">${t('c_amount')}</th></tr></thead><tbody>${pays.map(p => `<tr><td>${date(p.createdAt)}</td><td>${p.method === 'kaspi' ? 'Kaspi' : t('m_card')} ${payStatus(p)}</td><td class="r">${money(p.amount)}</td></tr>`).join('')}</tbody></table></div>` : `<p class="muted">${t('acc_empty')}</p>`}${contactBox()}</section>`}`;
 }
 
 // ── admin ──
 let adQ = '';
 function vAdmin() {
   const st = S.stats();
-  return `<div class="kpis">${[['k_users', st.users], ['k_active', st.active], ['k_rev', st.revenue], ['k_admins', st.admins]].map(([k, v], i) => `<div class="kpi glass spot rv"><small>${t(k)}</small><b><span data-count="${v}">0</span>${i === 2 ? ' ₸' : ''}</b></div>`).join('')}</div>
+  return `<div class="kpis">${[['k_users', st.users], ['k_active', st.active], ['k_rev', st.revenue], ['k_pending', st.pending || 0]].map(([k, v], i) => `<div class="kpi glass spot rv"><small>${t(k)}</small><b><span data-count="${v}">0</span>${i === 2 ? ' ₸' : ''}</b></div>`).join('')}</div>
   <section class="panel glass rv"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><h2 style="margin:0">${t('ad_users')}</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="input" id="adq" type="search" placeholder="${t('ad_q')}" aria-label="${t('ad_q')}" value="${esc(adQ)}" style="width:260px"><button class="btn btn-ghost btn-sm" id="adexp">${ic('download')} ${t('export')}</button></div></div>
     <div class="tbl-wrap"><table class="tbl" id="adt"></table></div></section>
@@ -487,10 +512,11 @@ function bindAdmin(me) {
       return `<tr><td><b>${esc(u.name)}</b><br><small class="muted">${esc(u.email)}</small></td><td><span class="badge ${u.role === 'admin' ? 'b-adm' : 'b-no'}">${u.role === 'admin' ? t('role_admin') : t('role_user')}</span></td><td>${status}</td><td>${date(u.createdAt)}</td><td>${acts}</td></tr>`;
     }).join('') + '</tbody>';
     const ps = S.payments();
-    $('#adp').innerHTML = ps.length ? `<thead><tr><th>${t('c_date')}</th><th>${t('c_user')}</th><th>${t('c_method')}</th><th class="r">${t('c_amount')}</th></tr></thead><tbody>${ps.map(p => `<tr><td>${date(p.createdAt)}</td><td>${esc(p.email)}</td><td>${p.method === 'kaspi' ? 'Kaspi Pay' : t('m_card')} <span class="demo-badge">demo</span></td><td class="r">${money(p.amount)}</td></tr>`).join('')}</tbody>` : `<tbody><tr><td class="muted">${t('acc_empty')}</td></tr></tbody>`;
+    $('#adp').innerHTML = ps.length ? `<thead><tr><th>${t('c_date')}</th><th>${t('c_user')}</th><th>${t('c_sender')}</th><th class="r">${t('c_amount')}</th><th>${t('c_status')}</th><th>${t('c_actions')}</th></tr></thead><tbody>${ps.map(p => `<tr><td>${date(p.createdAt)}</td><td>${esc(p.email)}</td><td>${esc(p.note || '—')}</td><td class="r">${money(p.amount)}</td><td>${payStatus(p)}</td>
+      <td>${p.status === 'pending' ? `<div class="row-actions"><button class="btn btn-primary btn-sm" data-p="confirm" data-id="${p.id}">${t('a_confirm')}</button><button class="btn btn-danger btn-sm" data-p="reject" data-id="${p.id}">${t('a_reject')}</button></div>` : ''}</td></tr>`).join('')}</tbody>` : `<tbody><tr><td class="muted">${t('acc_empty')}</td></tr></tbody>`;
   };
   // KPI-карточки сверху: обновить числа после ответа сервера
-  const kpis = () => { const st = S.stats(); $$('.kpi b span').forEach((el, i) => { const v = [st.users, st.active, st.revenue, st.admins][i]; el.dataset.count = v; el.textContent = v.toLocaleString('ru-RU'); }); };
+  const kpis = () => { const st = S.stats(); $$('.kpi b span').forEach((el, i) => { const v = [st.users, st.active, st.revenue, st.pending || 0][i]; el.dataset.count = v; el.textContent = v.toLocaleString('ru-RU'); }); };
   S.loadAdmin().then(() => { if ($('#adt')) { draw(); kpis(); } }); // свежие данные с сервера
   $('#adq').oninput = e => { adQ = e.target.value; draw(); };
   $('#adt').onclick = async e => {
@@ -501,6 +527,13 @@ function bindAdmin(me) {
       if (b.dataset.a === 'block') { await S.toggleBlock(id); toast(t('t_saved')); }
       if (b.dataset.a === 'del') { if (!(await ask(t('confirm_del', { e: b.dataset.e }), t('a_del')))) return; await S.remove(id); toast(t('t_deleted')); }
     } catch (err) { toast(t(typeof err === 'string' ? err : 'e_generic')); }
+    draw(); kpis();
+  };
+  // заявки на оплату: подтвердить (включает подписку на сервере) или отклонить
+  $('#adp').onclick = async e => {
+    const b = e.target.closest('[data-p]'); if (!b) return; b.disabled = true;
+    try { await S.payAction(b.dataset.p, b.dataset.id); toast(t(b.dataset.p === 'confirm' ? 't_confirmed' : 't_rejected')); }
+    catch (err) { toast(t(typeof err === 'string' ? err : 'e_generic')); }
     draw(); kpis();
   };
   $('#adexp').onclick = () => {

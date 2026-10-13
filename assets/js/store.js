@@ -59,12 +59,14 @@ window.Store = (() => {
     window.History && History.setAll([]);
   }
 
-  async function pay(method) {
-    const d = await api('/api/pay', { method: 'POST', body: { method } });
-    st.user = d.user; st.payments.unshift(d.payment);
+  // заявка на оплату через Kaspi: sender — имя отправителя перевода
+  async function pay(sender) {
+    const d = await api('/api/pay', { method: 'POST', body: { sender } });
+    st.payments = [d.payment].concat(st.payments.filter(p => p.id !== d.payment.id));
     return d.payment;
   }
   const myPayments = () => st.payments;
+  const pending = () => st.payments.find(p => p.status === 'pending') || null;
 
   // ── admin ──
   const users = () => st.admin.users;
@@ -75,6 +77,7 @@ window.Store = (() => {
   const revoke = id => adminAction('revoke', id);
   const toggleBlock = id => adminAction('block', id);
   const remove = id => adminAction('delete', id);
+  const payAction = (action, id) => adminAction(action, id); // confirm | reject заявки на оплату
 
   // ── чек-листы документов ──
   const getChecks = list => st.checks[list] || {};
@@ -83,5 +86,5 @@ window.Store = (() => {
     api('/api/checks', { method: 'POST', body: { list, key, val: !!val } }).catch(() => {}); // и на сервер
   }
 
-  return { api, init, loadAdmin, me, isPaid, daysLeft, register, login, logout, pay, myPayments, users, payments, stats, grant, revoke, toggleBlock, remove, getChecks, setCheck };
+  return { api, init, loadAdmin, me, isPaid, daysLeft, register, login, logout, pay, myPayments, pending, payAction, users, payments, stats, grant, revoke, toggleBlock, remove, getChecks, setCheck };
 })();
