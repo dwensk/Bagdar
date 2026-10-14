@@ -378,3 +378,14 @@ button,select{cursor:pointer}
 .upick-list li:hover,.upick-list li.on{background:color-mix(in srgb,var(--primary) 12%,transparent)}
 .upick-list .upick-none{cursor:default;color:var(--muted-fg)}
 .upick-ver{color:var(--ok)}
+/* цены по программам в карточке вуза */
+.prog-area{border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--bg)}
+.prog-area summary{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px;padding:12px 14px;cursor:pointer;list-style:none;min-height:44px}
+.prog-area summary::-webkit-details-marker{display:none}
+.prog-area summary span{display:flex;flex-direction:column}
+.prog-area summary small{color:var(--muted-fg);font-size:.8rem}
+.prog-rng{white-space:nowrap;font-size:.92rem}
+.prog-area ul{list-style:none;margin:0;padding:0 14px 10px}
+.prog-area li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border);font-size:.9rem}
+.prog-area li b{white-space:nowrap}
+.prog-area code{font-size:.82rem;color:var(--muted-fg);margin-right:4px}

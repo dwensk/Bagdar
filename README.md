@@ -41,16 +41,17 @@
 | `POST /api/checks` | Отметить документ в чек-листе |
 | `GET /api/admin`, `POST /api/admin` | Админ: пользователи, оплаты, статистика; выдать или отозвать подписку, блок, удаление |
 | `GET /api/programs?pair=&score=&sort=&grant=1` | Специальности по паре предметов ЕНТ: фильтр по баллу и сортировка на сервере |
+| `GET /api/uniprices?uni=` | Стоимость по программам бакалавриата в вузе, по направлениям |
 | `GET /api/health` | Проверка, что сервер и база работают |
 
 ### Таблицы
 
-`users`, `sessions`, `payments`, `history`, `checks`, `programs` (см. `lib/db.js`).
+`users`, `sessions`, `payments`, `history`, `checks`, `programs`, `uni_prices` (см. `lib/db.js`).
 
 ### Источники данных
 
 - Специальности, пороги на грант, зарплаты и трудоустройство: [joo.kz](https://joo.kz/professions/), 105 специальностей по 12 парам предметов, собрано 13.10.2026 (`lib/programs.js`).
-- Цены вузов: BAQ.KZ, 11.08.2026 (26 вузов) и [Univision.kz](https://univision.kz/kk/univ/price.html), 2025 (ещё 28 вузов, бакалавриат) — `assets/js/data.js`, у каждой цены своя ссылка на источник.
+- Цены вузов: BAQ.KZ, 11.08.2026 и [Univision.kz](https://univision.kz/univ/price.html) — у 67 вузов сводная цена, у 58 — цены по каждой программе бакалавриата (2 344 программы, `lib/uniprices.js`).
 
 ### Безопасность
 

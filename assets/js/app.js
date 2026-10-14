@@ -392,22 +392,37 @@ function bindCatalog() {
     const ov = $('#cv').checked; const list = U.filter(u => (!ov || u.price) && (!c || u.city === c) && (!ty || u.type === ty) && (!f || u.fields.includes(f)) &&
       (!q || [u.name.ru, u.name.kz, u.full.ru, u.full.kz, u.city, ...(u.abbr || [])].some(s => String(s).toLowerCase().includes(q))));
     $('#ccount').textContent = `${t('found')}: ${list.length}`;
-    $('#cgrid').innerHTML = list.length ? list.map(u => `<button class="uni glass spot" data-uni="${u.id}"><h3>${esc(g(u.name))}</h3><span class="city">${esc(u.city)} · ${u.founded}</span>
+    $('#cgrid').innerHTML = list.length ? list.map(u => `<button class="uni glass spot" data-uni="${u.id}"><h3>${esc(g(u.name))}</h3><span class="city">${esc(u.city)}${u.founded ? ' · ' + u.founded : ''}</span>
       <span class="tags"><span class="tag${u.type === 'Ұлттық' ? ' p' : ''}">${esc(u.type)}</span>${u.code && u.code !== '—' ? `<span class="tag">${t('m_code')} ${esc(u.code)}</span>` : ''}</span>
       <span class="price-line">${esc(u.price ? u.tuition : g(u.tuition) || '—')}</span>
-      <span class="nums"><span><b>${u.minS}+</b><small>${t('minS')}</small></span><span><b>${u.grantS}+</b><small>${t('grantS')}</small></span><span><b>${u.founded}</b><small>${t('year')}</small></span></span></button>`).join('')
+      <span class="nums"><span><b>${u.minS != null ? u.minS + '+' : '—'}</b><small>${t('minS')}</small></span><span><b>${u.grantS != null ? u.grantS + '+' : '—'}</b><small>${t('grantS')}</small></span><span><b>${u.founded || '—'}</b><small>${t('year')}</small></span></span></button>`).join('')
       : `<p class="panel glass">${t('none')}</p>`;
   };
   ['cq', 'cc', 'ct', 'cf', 'cv'].forEach(i => $('#' + i).addEventListener(i === 'cv' ? 'change' : 'input', draw)); draw();
   $('#cgrid').addEventListener('click', e => { const b = e.target.closest('[data-uni]'); if (b) openUni(+b.dataset.uni); });
+}
+// цены по программам бакалавриата в карточке вуза: с сервера (/api/uniprices), сгруппированы по направлениям
+const AREAS = {
+  ru: { '6B01': 'Педагогические науки', '6B02': 'Искусство и гуманитарные науки', '6B03': 'Социальные науки, журналистика', '6B04': 'Бизнес, управление и право', '6B05': 'Естественные науки и математика', '6B06': 'IT и связь', '6B07': 'Инженерия и строительство', '6B08': 'Сельское хозяйство', '6B09': 'Ветеринария', '6B10': 'Здравоохранение', '6B11': 'Услуги (туризм, спорт, транспорт)', '6B12': 'Безопасность и военное дело', h: 'Стоимость по программам', n: 'программ', all: 'Все программы бакалавриата с ценой за год' },
+  kz: { '6B01': 'Педагогикалық ғылымдар', '6B02': 'Өнер және гуманитарлық ғылымдар', '6B03': 'Әлеуметтік ғылымдар, журналистика', '6B04': 'Бизнес, басқару және құқық', '6B05': 'Жаратылыстану ғылымдары және математика', '6B06': 'IT және байланыс', '6B07': 'Инженерия және құрылыс', '6B08': 'Ауыл шаруашылығы', '6B09': 'Ветеринария', '6B10': 'Денсаулық сақтау', '6B11': 'Қызмет көрсету (туризм, спорт, көлік)', '6B12': 'Қауіпсіздік және әскери іс', h: 'Бағдарламалар бойынша құны', n: 'бағдарлама', all: 'Бакалавриаттың барлық бағдарламалары жылдық құнымен' }
+};
+async function loadProgPrices(id) {
+  const box = $('#m-progs'); if (!box) return;
+  let d; try { d = await S.api('/api/uniprices?uni=' + id); } catch (e) { return; }
+  if (!d.count || !$('#m-progs')) return;
+  const A = AREAS[lang === 'kz' ? 'kz' : 'ru'], rng = a => a.min === a.max ? money(a.min) : `${money(a.min)} – ${money(a.max)}`;
+  box.innerHTML = `<h3 style="margin:4px 0 4px">${A.h}</h3><p class="hint" style="margin-bottom:8px">${A.all}</p>` + d.areas.map(a => `<details class="prog-area"><summary><span><b>${esc(A[a.area] || a.area)}</b><small>${a.items.length} ${A.n}</small></span><b class="prog-rng">${rng(a)}</b></summary>
+    <ul>${a.items.map(x => `<li><span><code>${esc(x.code)}</code>${x.name ? ' ' + esc(x.name) : ''}</span><b>${money(x.price)}</b></li>`).join('')}</ul></details>`).join('') +
+    (d.source ? `<p class="hint" style="margin:8px 0 14px"><a href="${esc(d.source)}" target="_blank" rel="noopener">Univision.kz</a></p>` : '');
 }
 function openUni(id) {
   const u = U.find(x => x.id === id); if (!u) return;
   const m = $('#modal'); const last = document.activeElement;
   m.innerHTML = `<div class="modal-box glass" role="dialog" aria-modal="true" aria-labelledby="m-title">
     <div class="modal-head"><div><h2 id="m-title" style="font-size:1.3rem">${esc(g(u.full))}</h2><p class="muted">${esc(u.city)} · ${esc(u.type)}</p></div><button class="icon-btn" data-close aria-label="${t('close')}">${ic('x')}</button></div>
-    <div class="modal-grid">${[[t('minS'), u.minS], [t('grantS'), u.grantS], [t('m_cost'), g(u.tuition)], [t('m_code'), u.code], [t('m_founded'), u.founded], [t('m_city'), u.city]].map(([a, b]) => `<div><small>${a}</small><b>${esc(b)}</b></div>`).join('')}</div>
+    <div class="modal-grid">${[[t('minS'), u.minS], [t('grantS'), u.grantS], [t('m_cost'), g(u.tuition)], [t('m_code'), u.code], [t('m_founded'), u.founded], [t('m_city'), u.city]].map(([a, b]) => `<div><small>${a}</small><b>${esc(b == null || b === '' ? '—' : b)}</b></div>`).join('')}</div>
     ${u.price ? `<div class="verdict v-good" style="padding:14px 16px;margin-bottom:14px"><b>${t('badge_ver')} · ${esc(u.price.year)}</b><br>${esc(g(u.price.note))}<br><a href="${(u.price.src || PRICE_SRC).url}" target="_blank" rel="noopener" style="color:inherit">${t('src_price')}: ${esc((u.price.src || PRICE_SRC).name)}</a></div>` : `<p class="hint" style="margin-bottom:12px">${t('est_note')}</p>`}
+    <div id="m-progs" aria-live="polite"></div>
     <p style="margin-bottom:18px">${esc(g(u.specs))}</p>
     <div class="actions"><button class="btn btn-ghost" data-use="1">${t('use_from')}</button><button class="btn btn-accent" data-use="2">${t('use_to')} ${ic('arrow')}</button></div></div>`;
   m.classList.add('open'); document.body.style.overflow = 'hidden';
@@ -416,6 +431,7 @@ function openUni(id) {
   document.addEventListener('keydown', esc_);
   m.onclick = e => { if (e.target === m || e.target.closest('[data-close]')) close(); const b = e.target.closest('[data-use]'); if (b) { close(); pending = { n: +b.dataset.use, u }; go('#/app/transfer'); } };
   $('[data-close]', m).focus();
+  loadProgPrices(u.id);
 }
 let pending = null;
 
@@ -434,7 +450,7 @@ function bindFinder() {
     const s = parseInt($('#fs').value), f = $('#ff').value, c = $('#fc').value;
     if (isNaN(s) || s < 0 || s > 140 || !f) { $('#fd-e').textContent = t('fd_err'); $('#fs').focus(); return; }
     $('#fd-e').textContent = '';
-    const list = U.filter(u => u.fields.includes(f) && (!c || u.city === c) && s >= u.minS).sort((a, b) => b.grantS - a.grantS);
+    const list = U.filter(u => u.minS != null && u.fields.includes(f) && (!c || u.city === c) && s >= u.minS).sort((a, b) => b.grantS - a.grantS);
     $('#fr').innerHTML = `<p class="hint" style="margin:0 0 10px 6px">${t('found')}: ${list.length}</p>` + (list.length ? list.map(u => {
       const d = s - u.grantS, ch = d >= 15 ? 95 : d >= 5 ? 80 : d >= 0 ? 65 : d >= -10 ? 45 : d >= -20 ? 25 : 10;
       const cls = ch >= 65 ? 'v-good' : ch >= 40 ? 'v-mid' : 'v-bad';
@@ -594,6 +610,8 @@ function bindAdmin(me) {
 
 // ════════ ROUTER ════════
 function route() {
+  // при переходе на другую страницу (в т.ч. кнопкой «Назад») закрываем открытую карточку вуза
+  const mo = $('#modal'); if (mo && mo.classList.contains('open')) { mo.classList.remove('open'); mo.innerHTML = ''; document.body.style.overflow = ''; }
   const [path, qs] = (location.hash.slice(1) || '/').split('?');
   const params = new URLSearchParams(qs || '');
   const u = S.me();
