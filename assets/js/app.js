@@ -177,14 +177,10 @@ function vAuth(mode) {
       ${CFG.MODE === 'demo' ? `<p class="alert info">${t('demo_mode')}</p>` : ''}
       <div id="f-form" class="alert bad" role="alert" hidden></div>
       <form id="auth-form" novalidate>
-        ${reg ? `<fieldset class="role"><legend class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">${t('c_role')}</legend>
-          <label><input type="radio" name="role" value="user" checked> ${ic('account')} ${t('role_user')}</label>
-          <label><input type="radio" name="role" value="admin"> ${ic('admin')} ${t('role_admin')}</label></fieldset>
-        <div class="field"><label for="f-name">${t('f_name')}</label><input class="input" id="f-name" name="name" autocomplete="name" aria-describedby="e-name"><p class="err" id="e-name"></p></div>` : ''}
+        ${reg ? `<div class="field"><label for="f-name">${t('f_name')}</label><input class="input" id="f-name" name="name" autocomplete="name" aria-describedby="e-name"><p class="err" id="e-name"></p></div>` : ''}
         <div class="field"><label for="f-email">${t('f_email')}</label><input class="input" id="f-email" name="email" type="email" inputmode="email" autocomplete="email" aria-describedby="e-email"><p class="err" id="e-email"></p></div>
         <div class="field"><label for="f-password">${t('f_pw')}</label><div class="pw"><input class="input" id="f-password" name="password" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" aria-describedby="h-pw e-password"><button type="button" data-pw aria-label="${t('show_pw')}">${ic('eye')}</button></div>
           ${reg ? `<div class="meter" aria-hidden="true"><i id="pw-meter"></i></div><p class="hint" id="h-pw">${t('f_pw_h')} <span id="pw-label"></span></p>` : ''}<p class="err" id="e-password"></p></div>
-        ${reg ? `<div class="field" id="code-field" hidden><label for="f-code">${t('f_code')}</label><input class="input" id="f-code" name="code" autocomplete="off" aria-describedby="h-code e-code"><p class="hint" id="h-code">${t('f_code_h')}</p><p class="err" id="e-code"></p></div>` : ''}
         <button class="btn btn-accent btn-block" type="submit" id="auth-submit">${reg ? t('do_reg') : t('do_login')}</button>
       </form>
       <p class="hint" style="text-align:center;margin-top:16px">${reg ? t('have_acc') : t('no_acc')} <a href="${reg ? '#/login' : '#/register'}">${reg ? t('login') : t('register')}</a></p>
@@ -196,7 +192,6 @@ function bindAuth(mode) {
   $$('[data-href]').forEach(b => b.onclick = () => go(b.dataset.href));
   $('[data-pw]').onclick = e => { const b = e.currentTarget, i = $('#f-password'), show = i.type === 'password'; i.type = show ? 'text' : 'password'; b.innerHTML = ic(show ? 'eyeoff' : 'eye'); b.setAttribute('aria-label', t(show ? 'hide_pw' : 'show_pw')); };
   if (reg) {
-    $$('input[name=role]').forEach(r => r.onchange = () => { $('#code-field').hidden = f.role.value !== 'admin'; });
     $('#f-password').oninput = e => { const v = e.target.value; let s = 0; if (v.length >= 8) s++; if (v.length >= 12) s++; if (/[A-ZА-ЯӘҒҚҢӨҰҮҺІ]/.test(v) && /[a-zа-яәғқңөұүһі]/.test(v)) s++; if (/\d/.test(v) && /[^\w\s]/.test(v)) s++;
       const m = $('#pw-meter'), lvl = !v ? 0 : s <= 1 ? 1 : s <= 2 ? 2 : 3; m.style.width = [0, 34, 67, 100][lvl] + '%'; m.style.background = ['', 'var(--danger)', 'var(--warn)', 'var(--ok)'][lvl]; $('#pw-label').textContent = lvl ? '· ' + t(['', 'pw_weak', 'pw_ok', 'pw_strong'][lvl]) : ''; };
   }
@@ -206,7 +201,7 @@ function bindAuth(mode) {
     const btn = $('#auth-submit'), label = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
     let res;
     try {
-      res = reg ? await S.register({ name: f.name.value, email: f.email.value, password: f.password.value, role: f.role.value, code: f.code ? f.code.value.trim() : '' })
+      res = reg ? await S.register({ name: f.name.value, email: f.email.value, password: f.password.value })
                 : await S.login({ email: f.email.value, password: f.password.value });
     } catch (err) { res = { errs: { form: typeof err === 'string' ? err : 'e_generic' } }; }
     btn.disabled = false; btn.innerHTML = label;
@@ -489,7 +484,22 @@ function vAccount(u) {
   return `<section class="panel glass rv"><div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><span class="avatar" style="width:56px;height:56px;font-size:1.3rem">${esc(u.name.slice(0, 1).toUpperCase())}</span><div><h2 style="margin:0">${esc(u.name)}</h2><p class="muted">${esc(u.email)} · <span class="badge ${adm ? 'b-adm' : 'b-no'}">${adm ? t('role_admin') : t('role_user')}</span></p></div></div></section>
   <section class="panel glass rv"><h2>${t('acc_plan')}</h2>${adm ? `<p>${t('sub_admin')}</p>` : `<p>${u.paidUntil > Date.now() ? `<span class="badge b-ok">${t('sub_active')}</span> ${t('acc_until')} ${date(u.paidUntil)}` : `<span class="badge b-no">${t('acc_none')}</span>`}</p><div class="actions" style="margin-top:14px"><a class="btn btn-accent" href="#/pay?extend=1">${t('acc_extend')}</a></div>`}</section>
   ${History.render(money, esc)}
+  <section class="panel glass rv"><h2>${t('pw_h')}</h2><form id="pw-form" class="grid2" novalidate>
+    <div class="field"><label for="pw-old">${t('pw_old')}</label><input class="input" id="pw-old" type="password" autocomplete="current-password"><p class="err" id="pe-old"></p></div>
+    <div class="field"><label for="pw-new">${t('pw_new')}</label><input class="input" id="pw-new" type="password" autocomplete="new-password"><p class="err" id="pe-new"></p></div>
+    <div><button class="btn btn-ghost" id="pw-btn">${t('pw_btn')}</button></div></form></section>
   ${adm ? '' : `<section class="panel glass rv"><h2>${t('acc_hist')}</h2>${pays.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${t('c_date')}</th><th>${t('c_method')}</th><th class="r">${t('c_amount')}</th></tr></thead><tbody>${pays.map(p => `<tr><td>${date(p.createdAt)}</td><td>${p.method === 'kaspi' ? 'Kaspi' : t('m_card')} ${payStatus(p)}</td><td class="r">${money(p.amount)}</td></tr>`).join('')}</tbody></table></div>` : `<p class="muted">${t('acc_empty')}</p>`}${contactBox()}</section>`}`;
+}
+
+function bindAccount() {
+  $('#pw-form').onsubmit = async e => {
+    e.preventDefault(); $('#pe-old').textContent = $('#pe-new').textContent = '';
+    try {
+      const r = await S.changePassword($('#pw-old').value, $('#pw-new').value);
+      if (r.errs) { for (const [k, v] of Object.entries(r.errs)) $('#pe-' + k).textContent = t(v); return; }
+      $('#pw-old').value = $('#pw-new').value = ''; toast(t('t_pw_changed'));
+    } catch (err) { toast(t(typeof err === 'string' ? err : 'e_generic')); }
+  };
 }
 
 // ── admin ──
@@ -497,6 +507,13 @@ let adQ = '';
 function vAdmin() {
   const st = S.stats();
   return `<div class="kpis">${[['k_users', st.users], ['k_active', st.active], ['k_rev', st.revenue], ['k_pending', st.pending || 0]].map(([k, v], i) => `<div class="kpi glass spot rv"><small>${t(k)}</small><b><span data-count="${v}">0</span>${i === 2 ? ' ₸' : ''}</b></div>`).join('')}</div>
+  <section class="panel glass rv"><h2>${t('ad_add')}</h2><p class="muted" style="margin-bottom:14px">${t('ad_add_p')}</p>
+    <form id="ad-new" class="grid2" novalidate>
+      <div class="field"><label for="an-name">${t('f_name')}</label><input class="input" id="an-name" autocomplete="off"><p class="err" id="ae-name"></p></div>
+      <div class="field"><label for="an-email">${t('f_email')}</label><input class="input" id="an-email" type="email" autocomplete="off"><p class="err" id="ae-email"></p></div>
+      <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="an-days" checked> ${t('ad_give')}</label>
+      <div class="field" style="justify-content:end"><button class="btn btn-accent" id="an-btn">${ic('account')} ${t('ad_add_btn')}</button></div>
+    </form><div id="ad-out" aria-live="polite"></div></section>
   <section class="panel glass rv"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><h2 style="margin:0">${t('ad_users')}</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="input" id="adq" type="search" placeholder="${t('ad_q')}" aria-label="${t('ad_q')}" value="${esc(adQ)}" style="width:260px"><button class="btn btn-ghost btn-sm" id="adexp">${ic('download')} ${t('export')}</button></div></div>
     <div class="tbl-wrap"><table class="tbl" id="adt"></table></div></section>
@@ -508,7 +525,7 @@ function bindAdmin(me) {
     const us = S.users().filter(u => !q || u.name.toLowerCase().includes(q) || u.email.includes(q)).sort((a, b) => b.createdAt - a.createdAt);
     $('#adt').innerHTML = `<thead><tr><th>${t('c_user')}</th><th>${t('c_role')}</th><th>${t('c_status')}</th><th>${t('c_created')}</th><th>${t('c_actions')}</th></tr></thead><tbody>` + us.map(u => {
       const self = u.id === me.id, status = u.blocked ? `<span class="badge b-bad">${t('st_blocked')}</span>` : u.role === 'admin' ? `<span class="badge b-adm">Pro</span>` : u.paidUntil > now ? `<span class="badge b-ok">${t('st_paid', { d: date(u.paidUntil) })}</span>` : `<span class="badge b-no">${t('st_unpaid')}</span>`;
-      const acts = self ? `<span class="muted">${t('you')}</span>` : `<div class="row-actions">${u.role === 'user' ? `<button class="btn btn-ghost btn-sm" data-a="grant" data-id="${u.id}">${t('a_grant')}</button>${u.paidUntil > now ? `<button class="btn btn-ghost btn-sm" data-a="revoke" data-id="${u.id}">${t('a_revoke')}</button>` : ''}` : ''}<button class="btn btn-ghost btn-sm" data-a="block" data-id="${u.id}">${u.blocked ? t('a_unblock') : t('a_block')}</button><button class="btn btn-danger btn-sm" data-a="del" data-id="${u.id}" data-e="${esc(u.email)}">${t('a_del')}</button></div>`;
+      const acts = self ? `<span class="muted">${t('you')}</span>` : `<div class="row-actions">${u.role === 'user' ? `<button class="btn btn-ghost btn-sm" data-a="grant" data-id="${u.id}">${t('a_grant')}</button>${u.paidUntil > now ? `<button class="btn btn-ghost btn-sm" data-a="revoke" data-id="${u.id}">${t('a_revoke')}</button>` : ''}` : ''}<button class="btn btn-ghost btn-sm" data-a="reset" data-id="${u.id}" data-e="${esc(u.email)}">${t('a_reset')}</button><button class="btn btn-ghost btn-sm" data-a="block" data-id="${u.id}">${u.blocked ? t('a_unblock') : t('a_block')}</button><button class="btn btn-danger btn-sm" data-a="del" data-id="${u.id}" data-e="${esc(u.email)}">${t('a_del')}</button></div>`;
       return `<tr><td><b>${esc(u.name)}</b><br><small class="muted">${esc(u.email)}</small></td><td><span class="badge ${u.role === 'admin' ? 'b-adm' : 'b-no'}">${u.role === 'admin' ? t('role_admin') : t('role_user')}</span></td><td>${status}</td><td>${date(u.createdAt)}</td><td>${acts}</td></tr>`;
     }).join('') + '</tbody>';
     const ps = S.payments();
@@ -525,9 +542,28 @@ function bindAdmin(me) {
       if (b.dataset.a === 'grant') { await S.grant(id); toast(t('t_granted')); }
       if (b.dataset.a === 'revoke') { await S.revoke(id); toast(t('t_revoked')); }
       if (b.dataset.a === 'block') { await S.toggleBlock(id); toast(t('t_saved')); }
+      if (b.dataset.a === 'reset') { if (!(await ask(t('confirm_reset', { e: b.dataset.e }), t('a_reset')))) return; showCreds(await S.resetPassword(id)); }
       if (b.dataset.a === 'del') { if (!(await ask(t('confirm_del', { e: b.dataset.e }), t('a_del')))) return; await S.remove(id); toast(t('t_deleted')); }
     } catch (err) { toast(t(typeof err === 'string' ? err : 'e_generic')); }
     draw(); kpis();
+  };
+  // данные для входа, которые админ отправляет клиенту (пароль сервер показывает один раз)
+  const showCreds = c => {
+    if (!c) return;
+    const text = `Bagdar\n${t('ad_site')}: ${location.origin}\n${t('ad_login')}: ${c.email}\n${t('ad_pw')}: ${c.password}`;
+    $('#ad-out').innerHTML = `<div class="alert info" style="margin-top:14px"><b>${t('ad_created')}</b><pre style="white-space:pre-wrap;margin:8px 0;font:inherit">${esc(text)}</pre><button class="btn btn-ghost btn-sm" id="ad-copy">${t('copy')}</button></div>`;
+    $('#ad-copy').onclick = async () => { try { await navigator.clipboard.writeText(text); toast(t('t_copied')); } catch (e) {} };
+    $('#ad-out').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+  };
+  $('#ad-new').onsubmit = async e => {
+    e.preventDefault(); $('#ae-name').textContent = $('#ae-email').textContent = '';
+    const btn = $('#an-btn'); btn.disabled = true;
+    try {
+      const r = await S.createUser({ name: $('#an-name').value, email: $('#an-email').value, days: $('#an-days').checked });
+      if (r.errs) { for (const [k, v] of Object.entries(r.errs)) { const el = $('#ae-' + k); if (el) el.textContent = t(v); } }
+      else { showCreds(r.created); $('#an-name').value = $('#an-email').value = ''; draw(); kpis(); }
+    } catch (err) { toast(t(typeof err === 'string' ? err : 'e_generic')); }
+    btn.disabled = false;
   };
   // заявки на оплату: подтвердить (включает подписку на сервере) или отклонить
   $('#adp').onclick = async e => {
@@ -564,7 +600,7 @@ function route() {
       programs: [Programs.t('title'), () => Programs.view(), () => Programs.bind(window.Bagdar)],
       catalog: [t('cat_title'), vCatalog, bindCatalog], finder: [t('fd_title'), vFinder, bindFinder],
       docs: [t('doc_title'), () => vDocs(params.get('tab')), () => bindDocs(params.get('tab'))],
-      rules: [t('ru_title'), vRules, bindRules], account: [t('acc_title'), () => vAccount(u), null]
+      rules: [t('ru_title'), vRules, bindRules], account: [t('acc_title'), () => vAccount(u), bindAccount]
     };
     const m = map[v]; if (!m) return go('#/app/transfer');
     html = shell(u, v, m[0], m[1]()); bind = m[2];

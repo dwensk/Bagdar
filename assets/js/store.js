@@ -78,6 +78,15 @@ window.Store = (() => {
   const toggleBlock = id => adminAction('block', id);
   const remove = id => adminAction('delete', id);
   const payAction = (action, id) => adminAction(action, id); // confirm | reject заявки на оплату
+  // админ создаёт аккаунт клиента / выдаёт новый пароль; сервер возвращает временный пароль один раз
+  async function createUser(data) {
+    const d = await api('/api/admin', { method: 'POST', body: { action: 'create', ...data } });
+    if (d.errs) return { errs: d.errs };
+    st.admin = d; return { created: d.created };
+  }
+  async function resetPassword(id) { const d = await api('/api/admin', { method: 'POST', body: { action: 'reset', id } }); st.admin = d; return d.created; }
+  // пользователь меняет свой пароль
+  async function changePassword(old, password) { return api('/api/auth?action=password', { method: 'POST', body: { old, password } }); }
 
   // ── чек-листы документов ──
   const getChecks = list => st.checks[list] || {};
@@ -86,5 +95,5 @@ window.Store = (() => {
     api('/api/checks', { method: 'POST', body: { list, key, val: !!val } }).catch(() => {}); // и на сервер
   }
 
-  return { api, init, loadAdmin, me, isPaid, daysLeft, register, login, logout, pay, myPayments, pending, payAction, users, payments, stats, grant, revoke, toggleBlock, remove, getChecks, setCheck };
+  return { api, init, loadAdmin, me, isPaid, daysLeft, register, login, logout, pay, myPayments, pending, payAction, createUser, resetPassword, changePassword, users, payments, stats, grant, revoke, toggleBlock, remove, getChecks, setCheck };
 })();

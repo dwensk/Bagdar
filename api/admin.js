@@ -1,8 +1,9 @@
 // /api/admin — только для администраторов.
 // GET — пользователи, оплаты и статистика.
-// POST { action, id } — для пользователя: grant | revoke | block | delete; для заявки на оплату: confirm | reject.
+// POST { action, id } — для пользователя: grant | revoke | block | delete | reset (новый пароль);
+//   для заявки на оплату: confirm | reject; create { name, email, days } — админ сам создаёт аккаунт.
 const { query } = require('../lib/db');
-const { DAY, send, body, pub, requireUser, handler } = require('../lib/http');
+const { DAY, send, body, pub, requireUser, handler, newId, hashPassword, makeSalt, tempPassword, validEmail } = require('../lib/http');
 const { payment } = require('./me');
 const CFG = require('../lib/config');
 
@@ -29,7 +30,19 @@ module.exports = handler(async (req, res) => {
   if (!me) return;
 
   if (req.method === 'POST') {
-    const { action, id } = await body(req);
+    const b = await body(req), { action, id } = b;
+    if (action === 'create') {
+      // ручное добавление клиента: админ вводит имя и e-mail, сервер придумывает временный пароль
+      const name = String(b.name || '').trim(), email = String(b.email || '').trim().toLowerCase(), errs = {};
+      if (name.length < 2 || name.length > 60) errs.name = 'e_name';
+      if (!validEmail(email)) errs.email = 'e_email';
+      else if ((await query('SELECT 1 FROM users WHERE email = $1', [email])).rows.length) errs.email = 'e_taken';
+      if (Object.keys(errs).length) return send(res, 400, { errs });
+      const password = tempPassword(), salt = makeSalt(), now = Date.now();
+      await query(`INSERT INTO users (id, name, email, role, salt, hash, created_at, paid_until) VALUES ($1, $2, $3, 'user', $4, $5, $6, $7)`,
+        [newId(), name, email, salt, hashPassword(password, salt), now, b.days ? now + CFG.PERIOD_DAYS * DAY : 0]);
+      return send(res, 201, { ...(await overview()), created: { email, password } }); // пароль показываем один раз
+    }
     if (action === 'confirm' || action === 'reject') {
       // заявка на оплату: подтверждаем только ту, что ещё ждёт
       const { rows } = await query(`UPDATE payments SET status = $1 WHERE id = $2 AND status = 'pending' RETURNING *`,
@@ -47,6 +60,12 @@ module.exports = handler(async (req, res) => {
       await query('DELETE FROM sessions WHERE user_id = $1', [id]); // заблокированного сразу выкидывает из аккаунта
     }
     else if (action === 'delete') await query('DELETE FROM users WHERE id = $1', [id]);
+    else if (action === 'reset') { // забыл пароль: выдаём новый временный, старые входы закрываем
+      const password = tempPassword(), salt = makeSalt();
+      const { rows } = await query('UPDATE users SET salt = $1, hash = $2 WHERE id = $3 RETURNING email', [salt, hashPassword(password, salt), id]);
+      await query('DELETE FROM sessions WHERE user_id = $1', [id]);
+      if (rows[0]) return send(res, 200, { ...(await overview()), created: { email: rows[0].email, password } });
+    }
     else return send(res, 400, { error: 'e_action' });
   }
 
