@@ -20,15 +20,13 @@ window.Compare = (() => {
   // поле «вуз + цена»; n — номер поля (0 — мой вуз, 1..MAX — варианты)
   const uniField = (n, label) => `<div class="side-box${n ? ' to' : ''}">
     <label for="cu${n}">${label}</label>
-    <input class="input" id="cu${n}" list="cmp-list" autocomplete="off" placeholder="ЮКУ, КазНУ, AITU…">
+    <input class="input" id="cu${n}" autocomplete="off" placeholder="ЮКУ, КазНУ, AITU…">
     <label for="cp${n}" class="hint" style="font-weight:600;color:var(--fg)">${t('price')}</label>
     <input class="input" id="cp${n}" type="number" min="0" step="10000" inputmode="numeric"></div>`;
 
   function view(B) {
-    const opts = B.U.map(u => `<option value="${B.esc(B.uniLabel(u))}">${B.esc((u.abbr || []).slice(0, 3).join(', '))}</option>`).join('');
     const targets = Array.from({ length: MAX }, (_, i) => uniField(i + 1, `${t('target')} ${i + 1}`)).join('');
     return `<section class="panel glass rv"><p class="muted" style="margin-bottom:16px">${t('lead')}</p>
-      <datalist id="cmp-list">${opts}</datalist>
       <div class="grid2">${uniField(0, t('mine'))}
         <div class="side-box"><label for="cdone">${t('done')}</label><input class="input" id="cdone" type="number" min="0" max="239" value="60">
           <label for="cacc">${t('acc')}</label><input class="input" id="cacc" type="number" min="0" max="239" value="60"></div></div>
@@ -41,6 +39,7 @@ window.Compare = (() => {
   function bind(B) {
     // при выборе вуза подставляем его цену из базы
     for (let n = 0; n <= MAX; n++) {
+      window.UniPick.attach(document.getElementById('cu' + n)); // список вузов с поиском (assets/js/unipick.js)
       document.getElementById('cu' + n).addEventListener('input', e => {
         const u = B.findUni(e.target.value);
         const price = B.tuition(u);

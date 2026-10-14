@@ -18,6 +18,7 @@ const P = {
   compare: '<path d="M3 3v18h18"/><path d="M8 17V9"/><path d="M13 17V5"/><path d="M18 17v-4"/>',
   catalog: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   programs: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   finder: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
   docs: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="m9 15 2 2 4-4"/>',
   rules: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
@@ -273,6 +274,18 @@ function bindPay() {
 }
 
 // ════════ APP SHELL ════════
+// нижнее меню на телефоне: 4 главных раздела + «Ещё» (все остальные разделы в выезжающей панели)
+function bottomNav(cur, adm) {
+  const href = k => k === 'admin' ? '#/admin' : '#/app/' + k;
+  const main = adm ? ['transfer', 'catalog', 'docs', 'admin'] : ['transfer', 'compare', 'catalog', 'programs'];
+  const all = NAV.concat([['account', 'n_account']], adm ? [['admin', 'n_admin']] : []);
+  const rest = all.filter(([k]) => !main.includes(k));
+  const label = k => (all.find(x => x[0] === k) || [k, 'n_' + k])[1];
+  const a = k => `<a href="${href(k)}" class="${cur === k ? 'on' : ''}"${cur === k ? ' aria-current="page"' : ''}>${ic(k)}<span>${t(label(k))}</span></a>`;
+  const moreOn = rest.some(([k]) => k === cur);
+  return `<div class="more-sheet glass" id="more-sheet" hidden>${rest.map(([k, l]) => `<a href="${href(k)}" class="${cur === k ? 'on' : ''}">${ic(k)}<span>${t(l)}</span></a>`).join('')}</div>
+    <nav class="bottomnav glass" aria-label="Bagdar">${main.map(a).join('')}<button type="button" class="${moreOn ? 'on' : ''}" data-more aria-expanded="false" aria-controls="more-sheet">${ic('more')}<span>${t('n_more')}</span></button></nav>`;
+}
 const NAV = [['transfer', 'n_transfer'], ['compare', 'n_compare'], ['catalog', 'n_catalog'], ['finder', 'n_finder'], ['programs', 'n_programs'], ['docs', 'n_docs'], ['rules', 'n_rules']];
 function shell(u, cur, title, body) {
   const adm = u.role === 'admin';
@@ -287,7 +300,7 @@ function shell(u, cur, title, body) {
       <header class="topbar glass"><h1>${esc(title)}</h1>${langSeg()}${themeBtn()}<a class="avatar" href="#/app/account" aria-label="${t('n_account')}: ${esc(u.name)}">${esc(u.name.slice(0, 1).toUpperCase())}</a><button class="icon-btn" data-logout aria-label="${t('logout')}">${ic('logout')}</button></header>
       <main id="main" tabindex="-1" class="view">${body}</main>
     </div>
-    <nav class="bottomnav glass" aria-label="Bagdar">${(adm ? [['transfer', 'n_transfer'], ['catalog', 'n_catalog'], ['docs', 'n_docs'], ['rules', 'n_rules']] : NAV).map(([k, l]) => `<a href="#/app/${k}" class="${cur === k ? 'on' : ''}"${cur === k ? ' aria-current="page"' : ''}>${ic(k)}${t(l)}</a>`).join('')}${adm ? `<a href="#/admin" class="${cur === 'admin' ? 'on' : ''}">${ic('admin')}Admin</a>` : ''}</nav>
+    ${bottomNav(cur, adm)}
   </div>`;
 }
 
@@ -298,10 +311,9 @@ function tuition(u) { if (u && u.price) return u.price.min; if (!u || typeof u.t
 // общие функции для assets/js/compare.js
 window.Bagdar = { U, esc, money, uniLabel, findUni, tuition };
 function vTransfer() {
-  const opts = [...U].sort((a, b) => g(a.name).localeCompare(g(b.name), 'ru')).map(u => `<option value="${esc(uniLabel(u))}">${esc((u.abbr || []).slice(0, 3).join(', '))}</option>`).join('');
-  const side = (n, cls, lbl) => `<div class="side-box ${cls}"><label for="u${n}">${t(lbl)}</label><input class="input" id="u${n}" list="uni-list" autocomplete="off" placeholder="${t('tr_pick')}" aria-describedby="u${n}-e"><p class="err" id="u${n}-e"></p>
+  const side = (n, cls, lbl) => `<div class="side-box ${cls}"><label for="u${n}">${t(lbl)}</label><input class="input" id="u${n}" autocomplete="off" placeholder="${t('tr_pick')}" aria-describedby="u${n}-e"><p class="err" id="u${n}-e"></p>
     <label for="p${n}" class="hint" style="font-weight:600;color:var(--fg)">${t('tr_price')}</label><input class="input" id="p${n}" type="number" min="0" step="10000" inputmode="numeric" aria-describedby="p${n}-e r${n}"><p class="err" id="p${n}-e"></p><p class="hint" id="r${n}"></p></div>`;
-  return `<section class="panel glass rv" id="tr-form"><datalist id="uni-list">${opts}</datalist>
+  return `<section class="panel glass rv" id="tr-form">
     <div class="grid2">${side(1, '', 'tr_from')}${side(2, 'to', 'tr_to')}</div>
     <div class="grid2" style="margin-top:16px">
       <div class="field"><label for="done">${t('tr_done')}</label><div class="range"><input type="range" id="done-r" min="0" max="239" step="1" value="60" aria-label="${t('tr_done')}"><input class="input" type="number" id="done" min="0" max="239" value="60" aria-describedby="done-e done-h"></div><p class="hint" id="done-h">${t('tr_done_h')}</p><p class="err" id="done-e"></p></div>
@@ -317,7 +329,7 @@ function vTransfer() {
 }
 function bindTransfer(pref) {
   const pick = n => { const u = findUni($('#u' + n).value), r = $('#r' + n); if (!u) { r.textContent = ''; return; } const m = tuition(u); if (u.price) { $('#p' + n).value = m; r.textContent = t('ref_ver', { y: u.price.year, r: u.tuition, n: g(u.price.note) }) + (u.price.min !== u.price.max ? ' ' + t('ref_range') : ''); } else if (m) { $('#p' + n).value = m; r.textContent = t('ref_base', { r: u.tuition }); } else r.textContent = typeof u.tuition === 'object' ? t('ref_budget') : t('ref_none'); };
-  [1, 2].forEach(n => $('#u' + n).addEventListener('input', () => pick(n)));
+  [1, 2].forEach(n => { UniPick.attach($('#u' + n)); $('#u' + n).addEventListener('input', () => pick(n)); });
   const sync = v => { v = Math.max(0, Math.min(239, parseInt(v) || 0)); const a = $('#acc'), prev = +$('#done').value; if (+a.value === prev || +a.value > v) a.value = v; $('#done').value = v; $('#done-r').value = v; };
   $('#done-r').oninput = e => sync(e.target.value); $('#done').oninput = e => sync(e.target.value);
   if (pref) { $('#u' + pref.n).value = uniLabel(pref.u); pick(pref.n); }
@@ -617,6 +629,13 @@ function route() {
   };
   if (document.startViewTransition && !reduce) document.startViewTransition(paint); else paint();
 }
+// кнопка «Ещё» в нижнем меню на телефоне: открыть/закрыть панель, закрыть по нажатию мимо
+document.addEventListener('click', e => {
+  const sheet = $('#more-sheet'), more = $('[data-more]'); if (!sheet || !more) return;
+  const open = v => { sheet.hidden = !v; more.setAttribute('aria-expanded', String(v)); };
+  if (e.target.closest('[data-more]')) open(sheet.hidden);
+  else if (!sheet.hidden && !sheet.contains(e.target)) open(false);
+});
 // in-page anchors on landing (#features) shouldn't trigger router
 window.addEventListener('hashchange', () => { const h = location.hash; if (h && !h.startsWith('#/')) { const el = document.getElementById(h.slice(1)); if (el) { el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }); history.replaceState(null, '', '#/'); } return; } route(); });
 document.documentElement.lang = lang === 'kz' ? 'kk' : 'ru';

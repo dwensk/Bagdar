@@ -306,7 +306,7 @@ button,select{cursor:pointer}
 .olist{list-style:none;counter-reset:o;display:flex;flex-direction:column;gap:12px}
 .olist li{counter-increment:o;display:grid;grid-template-columns:34px 1fr;gap:12px;color:var(--fg-2)}
 .olist li::before{content:counter(o);width:30px;height:30px;border-radius:10px;background:var(--primary);color:var(--on-btn);font-weight:700;font-size:.85rem;display:grid;place-items:center}
-.src a{display:block;margin:6px 0}
+.src a{display:block;padding:10px 0;min-height:44px}
 
 /* Admin */
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
@@ -341,8 +341,13 @@ button,select{cursor:pointer}
   .shell{grid-template-columns:minmax(0,1fr);padding-bottom:110px}
   .side{display:none}
   .bottomnav{display:flex;position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:60;padding:6px;border-radius:20px;gap:2px}
-  .bottomnav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border-radius:14px;font-size:.7rem;font-weight:600;color:var(--muted-fg);text-decoration:none}
-  .bottomnav a.on{color:var(--primary);background:color-mix(in srgb,var(--primary) 12%,transparent)}
+  .bottomnav a,.bottomnav button{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border-radius:14px;font:600 .68rem/1.15 var(--font);color:var(--muted-fg);text-decoration:none;background:none;border:0;cursor:pointer;padding:0 2px}
+  .bottomnav span,.more-sheet span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bottomnav a.on,.bottomnav button.on{color:var(--primary);background:color-mix(in srgb,var(--primary) 12%,transparent)}
+  .more-sheet{position:fixed;left:10px;right:10px;bottom:calc(86px + env(safe-area-inset-bottom,0px));z-index:61;padding:8px;border-radius:20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;background:var(--bg);box-shadow:0 12px 40px rgba(15,23,42,.25)}
+  .more-sheet[hidden]{display:none}
+  .more-sheet a{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 14px;border-radius:14px;font-weight:600;color:var(--fg);text-decoration:none}
+  .more-sheet a.on{color:var(--primary);background:color-mix(in srgb,var(--primary) 12%,transparent)}
   .topnav .links{display:none}
   .toasts{bottom:calc(90px + env(safe-area-inset-bottom,0px))}
 }
@@ -365,3 +370,11 @@ button,select{cursor:pointer}
   .rv{opacity:1;transform:none}.hero h1 .w{opacity:1;transform:none}.demo-card{transform:none}
 }
 @media print{.aurora,.side,.bottomnav,.topbar,.toasts,.progress{display:none!important}.shell{display:block}.glass{box-shadow:none;border:1px solid #ccc;background:#fff}}
+/* выбор вуза из списка (assets/js/unipick.js) */
+.upick{position:relative}
+.upick-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:60;max-height:min(320px,50vh);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;margin:0;padding:6px;list-style:none;border-radius:14px;border:1px solid var(--border);background:var(--bg);box-shadow:0 12px 32px rgba(15,23,42,.18)}
+.upick-list li{display:flex;flex-direction:column;gap:2px;padding:10px 12px;min-height:44px;justify-content:center;border-radius:10px;cursor:pointer}
+.upick-list li small{color:var(--muted-fg);font-size:.82rem}
+.upick-list li:hover,.upick-list li.on{background:color-mix(in srgb,var(--primary) 12%,transparent)}
+.upick-list .upick-none{cursor:default;color:var(--muted-fg)}
+.upick-ver{color:var(--ok)}
