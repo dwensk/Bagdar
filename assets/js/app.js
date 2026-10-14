@@ -394,7 +394,7 @@ function bindCatalog() {
     $('#ccount').textContent = `${t('found')}: ${list.length}`;
     $('#cgrid').innerHTML = list.length ? list.map(u => `<button class="uni glass spot" data-uni="${u.id}"><h3>${esc(g(u.name))}</h3><span class="city">${esc(u.city)} · ${u.founded}</span>
       <span class="tags"><span class="tag${u.type === 'Ұлттық' ? ' p' : ''}">${esc(u.type)}</span>${u.code && u.code !== '—' ? `<span class="tag">${t('m_code')} ${esc(u.code)}</span>` : ''}</span>
-      <span class="price-line">${u.price ? `<span class="badge b-ok">${t('badge_ver')}</span> ${esc(u.tuition)}` : `<span class="badge b-no">${t('badge_est')}</span> ${esc(g(u.tuition) || '—')}`}</span>
+      <span class="price-line">${esc(u.price ? u.tuition : g(u.tuition) || '—')}</span>
       <span class="nums"><span><b>${u.minS}+</b><small>${t('minS')}</small></span><span><b>${u.grantS}+</b><small>${t('grantS')}</small></span><span><b>${u.founded}</b><small>${t('year')}</small></span></span></button>`).join('')
       : `<p class="panel glass">${t('none')}</p>`;
   };

@@ -45,7 +45,7 @@ window.UniPick = (() => {
       items = (B.findUni(input.value) || !q ? all : all.filter(u => { const h = hay(u); return words.every(w => h.includes(w)); }).sort((a, b) => rank(a) - rank(b))).slice(0, MAX_ITEMS);
       active = -1;
       list.innerHTML = items.length
-        ? items.map((u, i) => `<li role="option" id="${list.id}-${i}" data-i="${i}"><b>${B.esc(kz() ? u.name.kz : u.name.ru)}</b><small>${B.esc(u.city)}${u.price ? ` · <span class="upick-ver">${tx('ver')}</span>` : ''}</small></li>`).join('')
+        ? items.map((u, i) => `<li role="option" id="${list.id}-${i}" data-i="${i}"><b>${B.esc(kz() ? u.name.kz : u.name.ru)}</b><small>${B.esc(u.city)}</small></li>`).join('')
         : `<li class="upick-none">${tx('none')}</li>`;
       open(true);
     }
