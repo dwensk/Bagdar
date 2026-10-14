@@ -6,11 +6,11 @@ window.BAGDAR_CONFIG = {
   PERIOD_DAYS: 30,          // срок подписки (так же: lib/config.js)
 
   // Куда переводить деньги (показывается на странице оплаты)
-  KASPI_PHONE: '+7 700 000 00 00',   // ← номер Kaspi Gold
+  KASPI_PHONE: '+7 776 716 66 75',   // ← номер Kaspi Gold
   KASPI_NAME: 'Имя Ф.',              // ← получатель, как его видно в Kaspi при переводе
 
   // Связь с командой (показывается на странице оплаты и в аккаунте)
-  CONTACT_PHONE: '+7 700 000 00 00', // ← номер для звонка и WhatsApp
+  CONTACT_PHONE: '+7 776 716 66 75', // ← номер для звонка и WhatsApp
   SUPPORT: 'Telegram:@dimashqwk'
   // Код администратора хранится только на сервере (lib/config.js и переменная ADMIN_INVITE_CODE в Vercel).
 };

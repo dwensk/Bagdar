@@ -400,7 +400,7 @@ function openUni(id) {
   m.innerHTML = `<div class="modal-box glass" role="dialog" aria-modal="true" aria-labelledby="m-title">
     <div class="modal-head"><div><h2 id="m-title" style="font-size:1.3rem">${esc(g(u.full))}</h2><p class="muted">${esc(u.city)} · ${esc(u.type)}</p></div><button class="icon-btn" data-close aria-label="${t('close')}">${ic('x')}</button></div>
     <div class="modal-grid">${[[t('minS'), u.minS], [t('grantS'), u.grantS], [t('m_cost'), g(u.tuition)], [t('m_code'), u.code], [t('m_founded'), u.founded], [t('m_city'), u.city]].map(([a, b]) => `<div><small>${a}</small><b>${esc(b)}</b></div>`).join('')}</div>
-    ${u.price ? `<div class="verdict v-good" style="padding:14px 16px;margin-bottom:14px"><b>${t('badge_ver')} · ${esc(u.price.year)}</b><br>${esc(g(u.price.note))}<br><a href="${PRICE_SRC.url}" target="_blank" rel="noopener" style="color:inherit">${t('src_price')}: ${esc(PRICE_SRC.name)}</a></div>` : `<p class="hint" style="margin-bottom:12px">${t('est_note')}</p>`}
+    ${u.price ? `<div class="verdict v-good" style="padding:14px 16px;margin-bottom:14px"><b>${t('badge_ver')} · ${esc(u.price.year)}</b><br>${esc(g(u.price.note))}<br><a href="${(u.price.src || PRICE_SRC).url}" target="_blank" rel="noopener" style="color:inherit">${t('src_price')}: ${esc((u.price.src || PRICE_SRC).name)}</a></div>` : `<p class="hint" style="margin-bottom:12px">${t('est_note')}</p>`}
     <p style="margin-bottom:18px">${esc(g(u.specs))}</p>
     <div class="actions"><button class="btn btn-ghost" data-use="1">${t('use_from')}</button><button class="btn btn-accent" data-use="2">${t('use_to')} ${ic('arrow')}</button></div></div>`;
   m.classList.add('open'); document.body.style.overflow = 'hidden';
