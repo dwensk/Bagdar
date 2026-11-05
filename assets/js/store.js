@@ -6,6 +6,15 @@ window.Store = (() => {
   const DAY = 864e5;
   let token = null;
   try { token = localStorage.getItem(TOKEN); } catch (e) {}
+  let emailFlow = null, resetTicket = null;
+  try { emailFlow = JSON.parse(sessionStorage.getItem('bagdar:email-flow')); } catch (e) {}
+  if (!emailFlow || !['signup','recovery','verify_email'].includes(emailFlow.purpose)) emailFlow = null;
+  function rememberFlow(data) {
+    emailFlow = data && {challengeId:data.challengeId,email:data.email,purpose:data.purpose,
+      expiresAt:data.expiresAt,resendAt:data.resendAt};
+    resetTicket = null;
+    try { emailFlow ? sessionStorage.setItem('bagdar:email-flow',JSON.stringify(emailFlow)) : sessionStorage.removeItem('bagdar:email-flow'); } catch(e) {}
+  }
 
   // копия данных с сервера
   let st = { user: null, payments: [], checks: {}, admin: { users: [], payments: [], stats: { users: 0, active: 0, revenue: 0, admins: 0 } } };
@@ -46,7 +55,9 @@ window.Store = (() => {
   async function auth(action, data) {
     const d = await api('/api/auth?action=' + action, { method: 'POST', body: data });
     if (d.errs) return { errs: d.errs };
+    if (d.needsVerification) { rememberFlow(d); return d; }
     setToken(d.token);
+    rememberFlow(null);
     await init();
     return { user: d.user };
   }
@@ -57,6 +68,35 @@ window.Store = (() => {
     setToken(null);
     st.user = null; st.payments = []; st.checks = {};
     window.History && History.setAll([]);
+    rememberFlow(null);
+  }
+
+  async function forgotPassword(email) {
+    const d = await api('/api/auth?action=forgot',{method:'POST',body:{email}});
+    rememberFlow(d); return d;
+  }
+  async function sendVerification() {
+    const d = await api('/api/auth?action=send-verification',{method:'POST'});
+    rememberFlow(d); return d;
+  }
+  async function resendCode() {
+    if (!emailFlow) throw 'e_email_code';
+    const d = await api('/api/auth?action=resend-code',{method:'POST',body:emailFlow});
+    rememberFlow(d); return d;
+  }
+  async function verifyCode(code) {
+    if (!emailFlow) throw 'e_email_code';
+    const d = await api('/api/auth?action=verify-code',{method:'POST',body:{...emailFlow,code}});
+    if (d.purpose === 'recovery') { resetTicket = d.resetToken; return {recovery:true}; }
+    if (d.token) { setToken(d.token); await init(); }
+    else if (d.verified) st.user = d.user;
+    rememberFlow(null); return d;
+  }
+  async function finishReset(password) {
+    if (!resetTicket) throw 'e_email_code';
+    await api('/api/auth?action=reset-password',{method:'POST',body:{resetToken:resetTicket,password}});
+    setToken(null); st.user=null; st.payments=[]; st.checks={};
+    window.History && History.setAll([]); rememberFlow(null);
   }
 
   // заявка на оплату через Kaspi: sender — имя отправителя перевода
@@ -95,5 +135,7 @@ window.Store = (() => {
     api('/api/checks', { method: 'POST', body: { list, key, val: !!val } }).catch(() => {}); // и на сервер
   }
 
-  return { api, init, loadAdmin, me, isPaid, daysLeft, register, login, logout, pay, myPayments, pending, payAction, createUser, resetPassword, changePassword, users, payments, stats, grant, revoke, toggleBlock, remove, getChecks, setCheck };
+  return { api, init, loadAdmin, me, isPaid, daysLeft, register, login, logout, pay, myPayments, pending, payAction, createUser, resetPassword, changePassword, users, payments, stats, grant, revoke, toggleBlock, remove, getChecks, setCheck,
+    forgotPassword,sendVerification,resendCode,verifyCode,finishReset,
+    emailFlow:()=>emailFlow,emailResetReady:()=>!!resetTicket,clearEmailFlow:()=>rememberFlow(null) };
 })();
