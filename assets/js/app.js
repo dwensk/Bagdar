@@ -184,6 +184,7 @@ function vAuth(mode) {
           ${reg ? `<div class="meter" aria-hidden="true"><i id="pw-meter"></i></div><p class="hint" id="h-pw">${t('f_pw_h')} <span id="pw-label"></span></p>` : ''}<p class="err" id="e-password"></p></div>
         <button class="btn btn-accent btn-block" type="submit" id="auth-submit">${reg ? t('do_reg') : t('do_login')}</button>
       </form>
+      ${!reg ? `<p style="margin-top:14px"><a href="#/forgot">${t('email_forgot')}</a></p>` : ''}
       <p class="hint" style="text-align:center;margin-top:16px">${reg ? t('have_acc') : t('no_acc')} <a href="${reg ? '#/login' : '#/register'}">${reg ? t('login') : t('register')}</a></p>
     </section>
   </main>`;
@@ -214,8 +215,79 @@ function bindAuth(mode) {
       }
       (first || $('#f-email')).focus(); return;
     }
-    go(home(res.user));
+    if (res.needsVerification) { f.reset(); go('#/verify-email'); }
+    else go(home(res.user));
   };
+}
+
+// Real email confirmation and password recovery; neither passwords nor codes are persisted in the browser.
+function emailPage(title, content) {
+  return `<header class="topnav"><div class="topnav-in glass">${brand()}<div class="right">${langSeg()}${themeBtn()}</div></div></header>
+  <main id="main" tabindex="-1" class="auth"><div class="auth-side"><h1>${t(title)}</h1><p>${t('auth_p')}</p></div>
+  <section class="auth-card glass"><h2>${t(title)}</h2><p class="alert bad" id="email-error" role="alert" hidden></p>${content}</section></main>`;
+}
+function emailError(error) {
+  const el = $('#email-error');
+  if (el) { el.textContent=t(typeof error==='string'?error:'e_generic'); el.hidden=false; }
+}
+async function emailAction(form, action) {
+  const button=form.querySelector('[type=submit]'); if (button.disabled) return;
+  button.disabled=true; $('#email-error').hidden=true;
+  try { await action(); } catch(error) { emailError(error); }
+  finally { if (button.isConnected) button.disabled=false; }
+}
+function vForgot() {
+  return emailPage('email_recovery',`<p class="hint" style="margin:12px 0">${t('email_private')}</p><form id="email-forgot">
+  <div class="field"><label for="recovery-email">${t('f_email')}</label><input class="input" id="recovery-email" name="email" type="email" autocomplete="email" required maxlength="120"></div>
+  <button class="btn btn-accent btn-block" type="submit">${t('email_send')}</button></form><p style="margin-top:16px"><a href="#/login">${t('email_back')}</a></p>`);
+}
+function bindForgot() {
+  const form=$('#email-forgot'); form.onsubmit=event=>{
+    event.preventDefault(); emailAction(form,async()=>{ await S.forgotPassword(form.elements.email.value); go('#/verify-email'); });
+  };
+}
+function vEmailCode() {
+  const flow=S.emailFlow();
+  return emailPage(flow.purpose==='recovery'?'email_recovery':'email_confirm',`<p style="margin:12px 0"><b>${esc(flow.email)}</b></p><p>${t('email_code_help')}</p>
+  ${flow.purpose==='recovery'?`<p class="hint">${t('email_private')}</p>`:''}
+  <form id="email-code-form"><div class="field"><label for="email-code">${t('email_code')}</label>
+  <input class="input" id="email-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required style="font-size:1.6rem;letter-spacing:.3em"></div>
+  <button class="btn btn-accent btn-block" type="submit">${t('email_check')}</button></form>
+  <button class="btn btn-ghost btn-block" id="email-resend" type="button" style="margin-top:12px">${t('email_resend')}</button><p class="hint" id="email-wait" role="status"></p>
+  <button class="btn btn-ghost" id="email-cancel" type="button">${t('email_cancel')}</button>`);
+}
+function bindEmailCode() {
+  const form=$('#email-code-form'),resend=$('#email-resend');
+  let resending=false;
+  const tick=()=>{
+    if(!resend.isConnected)return;
+    const wait=Math.max(0,Math.ceil(((S.emailFlow()?.resendAt||0)-Date.now())/1000));
+    resend.disabled=resending||wait>0;
+    $('#email-wait').textContent=wait?t('email_wait',{s:wait}):'';
+    if(wait)setTimeout(tick,1000);
+  };tick();
+  form.onsubmit=event=>{ event.preventDefault(); emailAction(form,async()=>{
+    const result=await S.verifyCode(form.elements.code.value.trim());form.reset();
+    if(result.recovery)go('#/reset-password');
+    else {toast(t('email_confirmed'));go(home(S.me()));}
+  }); };
+  resend.onclick=async()=>{
+    if(resending)return; resending=true;resend.disabled=true;
+    try{await S.resendCode();toast(t('email_sent'));}catch(error){emailError(error);}
+    finally{resending=false;tick();}
+  };
+  $('#email-cancel').onclick=()=>{const recovery=S.emailFlow()?.purpose==='recovery';S.clearEmailFlow();go(S.me()?home(S.me()):recovery?'#/forgot':'#/register');};
+}
+function vResetPassword() {
+  return emailPage('email_new_password',`<form id="email-reset"><div class="field"><label for="reset-new">${t('pw_new')}</label><input class="input" type="password" id="reset-new" name="password" autocomplete="new-password" minlength="8" maxlength="200" required></div>
+  <div class="field"><label for="reset-repeat">${t('email_repeat')}</label><input class="input" type="password" id="reset-repeat" name="repeat" autocomplete="new-password" minlength="8" maxlength="200" required></div>
+  <button type="submit" class="btn btn-accent btn-block">${t('email_save')}</button></form>`);
+}
+function bindResetPassword() {
+  const form=$('#email-reset');form.onsubmit=event=>{event.preventDefault();emailAction(form,async()=>{
+    if(form.elements.password.value!==form.elements.repeat.value)throw 'e_email_mismatch';
+    await S.finishReset(form.elements.password.value);form.reset();toast(t('email_password_saved'));go('#/login');
+  });};
 }
 
 // ════════ PAYWALL ════════
@@ -510,6 +582,7 @@ function bindRules() {
 function vAccount(u) {
   const pays = S.myPayments(), adm = u.role === 'admin';
   return `<section class="panel glass rv"><div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><span class="avatar" style="width:56px;height:56px;font-size:1.3rem">${esc(u.name.slice(0, 1).toUpperCase())}</span><div><h2 style="margin:0">${esc(u.name)}</h2><p class="muted">${esc(u.email)} · <span class="badge ${adm ? 'b-adm' : 'b-no'}">${adm ? t('role_admin') : t('role_user')}</span></p></div></div></section>
+  <section class="panel glass rv"><h2>${t('email_status')}</h2><p><span class="badge ${u.emailVerified?'b-ok':'b-no'}">${t(u.emailVerified?'email_confirmed':'email_unconfirmed')}</span></p>${u.emailVerified?'':`<button type="button" id="account-verify-email" class="btn btn-ghost" style="margin-top:12px">${t('email_confirm')}</button>`}</section>
   <section class="panel glass rv"><h2>${t('acc_plan')}</h2>${adm ? `<p>${t('sub_admin')}</p>` : `<p>${u.paidUntil > Date.now() ? `<span class="badge b-ok">${t('sub_active')}</span> ${t('acc_until')} ${date(u.paidUntil)}` : `<span class="badge b-no">${t('acc_none')}</span>`}</p><div class="actions" style="margin-top:14px"><a class="btn btn-accent" href="#/pay?extend=1">${t('acc_extend')}</a></div>`}</section>
   ${History.render(money, esc)}
   <section class="panel glass rv"><h2>${t('pw_h')}</h2><form id="pw-form" class="grid2" novalidate>
@@ -520,6 +593,12 @@ function vAccount(u) {
 }
 
 function bindAccount() {
+  const verifyEmail=$('#account-verify-email');
+  if(verifyEmail)verifyEmail.onclick=async()=>{
+    verifyEmail.disabled=true;
+    try{await S.sendVerification();go('#/verify-email');}catch(error){toast(t(typeof error==='string'?error:'e_generic'));}
+    finally{if(verifyEmail.isConnected)verifyEmail.disabled=false;}
+  };
   $('#pw-form').onsubmit = async e => {
     e.preventDefault(); $('#pe-old').textContent = $('#pe-new').textContent = '';
     try {
@@ -601,9 +680,8 @@ function bindAdmin(me) {
     draw(); kpis();
   };
   $('#adexp').onclick = () => {
-    const rows = [['name', 'email', 'role', 'paid_until', 'blocked', 'created']].concat(S.users().map(u => [u.name, u.email, u.role, u.paidUntil ? new Date(u.paidUntil).toISOString() : '', u.blocked, new Date(u.createdAt).toISOString()]));
-    const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' })); a.download = 'bagdar-users.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    const csv = window.BagdarCSV.users(S.users());
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'bagdar-users.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
   draw();
 }
@@ -618,6 +696,9 @@ function route() {
   let html, bind, focusMain = true;
   const need = () => { if (!u) { go('#/login'); return false; } return true; };
   if (path === '/' || path === '') { html = vLanding(); focusMain = false; }
+  else if (path === '/forgot') {html=vForgot();bind=bindForgot;}
+  else if (path === '/verify-email') {if(!S.emailFlow())return go('#/login');html=vEmailCode();bind=bindEmailCode;}
+  else if (path === '/reset-password') {if(!S.emailResetReady()){S.clearEmailFlow();return go('#/forgot');}html=vResetPassword();bind=bindResetPassword;}
   else if (path === '/login' || path === '/register') { if (u) return go(home(u)); html = vAuth(path.slice(1)); bind = () => bindAuth(path.slice(1)); }
   else if (path === '/pay') { if (!need()) return; if (u.role === 'admin') return go('#/admin'); if (S.isPaid(u) && !params.get('extend')) return go('#/app/transfer'); html = vPay(u); bind = bindPay; }
   else if (path === '/admin') { if (!need()) return; if (u.role !== 'admin') return go(home(u)); html = shell(u, 'admin', t('ad_title'), vAdmin()); bind = () => bindAdmin(u); }
