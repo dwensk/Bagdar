@@ -7,10 +7,10 @@ const { DAY, send, body, pub, requireUser, handler, newId, hashPassword, makeSal
 const { payment } = require('./me');
 const CFG = require('../lib/config');
 
-async function overview() {
+async function overview({allPayments=false}={}) {
   const [us, ps] = await Promise.all([
     query('SELECT * FROM users ORDER BY created_at DESC'),
-    query(`SELECT * FROM payments ORDER BY (status = 'pending') DESC, created_at DESC LIMIT 500`)
+    query(`SELECT * FROM payments ORDER BY (status = 'pending') DESC, created_at DESC${allPayments?'':' LIMIT 500'}`)
   ]);
   const users = us.rows.map(pub), payments = ps.rows.map(payment), now = Date.now();
   return {
@@ -69,5 +69,5 @@ module.exports = handler(async (req, res) => {
     else return send(res, 400, { error: 'e_action' });
   }
 
-  send(res, 200, await overview());
+  send(res, 200, await overview({allPayments:req.method==='GET'&&new URL(req.url,'http://x').searchParams.get('export')==='1'}));
 });
