@@ -623,7 +623,7 @@ function vAdmin() {
       <div class="field" style="justify-content:end"><button class="btn btn-accent" id="an-btn">${ic('account')} ${t('ad_add_btn')}</button></div>
     </form><div id="ad-out" aria-live="polite"></div></section>
   <section class="panel glass"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><h2 style="margin:0">${t('ad_users')}</h2>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="input" id="adq" type="search" placeholder="${t('ad_q')}" aria-label="${t('ad_q')}" value="${esc(adQ)}" style="width:260px"><button class="btn btn-ghost btn-sm" id="adexp">${ic('download')} ${t('export')}</button></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="input" id="adq" type="search" placeholder="${t('ad_q')}" aria-label="${t('ad_q')}" value="${esc(adQ)}" style="width:260px"><button class="btn btn-primary btn-sm" id="adexcel">${ic('download')} ${lang==='kz'?'Excel есебі':'Отчёт Excel'}</button><button class="btn btn-ghost btn-sm" id="adexp">${ic('download')} ${t('export')}</button></div></div>
     <div class="tbl-wrap"><table class="tbl" id="adt"></table></div></section>
   <section class="panel glass"><h2>${t('ad_pay')}</h2><div class="tbl-wrap"><table class="tbl" id="adp"></table></div></section>`;
 }
@@ -683,6 +683,16 @@ function bindAdmin(me) {
   $('#adexp').onclick = () => {
     const csv = window.BagdarCSV.users(S.users());
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'bagdar-users.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  $('#adexcel').onclick = async e => {
+    const button=e.currentTarget;button.disabled=true;
+    try {
+      const data=await S.api('/api/admin?export=1');
+      const bytes=window.BagdarExcel.build(data.users,data.payments,{lang});
+      const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+      a.download='bagdar-report-'+new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Qyzylorda',year:'numeric',month:'2-digit',day:'2-digit'}).format(Date.now())+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    } catch(err) {toast(t(typeof err==='string'?err:'e_generic'));}
+    finally {if(button.isConnected)button.disabled=false;}
   };
   draw();
 }
