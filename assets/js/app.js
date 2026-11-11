@@ -613,18 +613,19 @@ function bindAccount() {
 let adQ = '';
 function vAdmin() {
   const st = S.stats();
-  return `<div class="kpis">${[['k_users', st.users], ['k_active', st.active], ['k_rev', st.revenue], ['k_pending', st.pending || 0]].map(([k, v], i) => `<div class="kpi glass spot rv"><small>${t(k)}</small><b><span data-count="${v}">0</span>${i === 2 ? ' ₸' : ''}</b></div>`).join('')}</div>
-  <section class="panel glass rv"><h2>${t('ad_add')}</h2><p class="muted" style="margin-bottom:14px">${t('ad_add_p')}</p>
+  // Admin data must stay visible even when a long table exceeds the reveal animation threshold.
+  return `<div class="kpis">${[['k_users', st.users], ['k_active', st.active], ['k_rev', st.revenue], ['k_pending', st.pending || 0]].map(([k, v], i) => `<div class="kpi glass spot"><small>${t(k)}</small><b><span data-count="${v}">0</span>${i === 2 ? ' ₸' : ''}</b></div>`).join('')}</div>
+  <section class="panel glass"><h2>${t('ad_add')}</h2><p class="muted" style="margin-bottom:14px">${t('ad_add_p')}</p>
     <form id="ad-new" class="grid2" novalidate>
       <div class="field"><label for="an-name">${t('f_name')}</label><input class="input" id="an-name" autocomplete="off"><p class="err" id="ae-name"></p></div>
       <div class="field"><label for="an-email">${t('f_email')}</label><input class="input" id="an-email" type="email" autocomplete="off"><p class="err" id="ae-email"></p></div>
       <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="an-days" checked> ${t('ad_give')}</label>
       <div class="field" style="justify-content:end"><button class="btn btn-accent" id="an-btn">${ic('account')} ${t('ad_add_btn')}</button></div>
     </form><div id="ad-out" aria-live="polite"></div></section>
-  <section class="panel glass rv"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><h2 style="margin:0">${t('ad_users')}</h2>
+  <section class="panel glass"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><h2 style="margin:0">${t('ad_users')}</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="input" id="adq" type="search" placeholder="${t('ad_q')}" aria-label="${t('ad_q')}" value="${esc(adQ)}" style="width:260px"><button class="btn btn-ghost btn-sm" id="adexp">${ic('download')} ${t('export')}</button></div></div>
     <div class="tbl-wrap"><table class="tbl" id="adt"></table></div></section>
-  <section class="panel glass rv"><h2>${t('ad_pay')}</h2><div class="tbl-wrap"><table class="tbl" id="adp"></table></div></section>`;
+  <section class="panel glass"><h2>${t('ad_pay')}</h2><div class="tbl-wrap"><table class="tbl" id="adp"></table></div></section>`;
 }
 function bindAdmin(me) {
   const draw = () => {
